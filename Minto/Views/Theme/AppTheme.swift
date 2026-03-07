@@ -7,6 +7,12 @@ enum AppTheme {
 
     static let background = Color.black
 
+    // recording capsule
+    static let creamCTA = Color(red: 0.93, green: 0.90, blue: 0.85)
+    static let darkCapsule = Color(white: 0.12)
+    static let recordingGreen = Color(red: 0.65, green: 0.80, blue: 0.30)
+    static let pausedDots = Color(white: 0.45)
+
     // surfaces
     static let surfaceFill = Color(white: 0.17)
     static let inputFill = Color(white: 0.17)

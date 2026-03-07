@@ -11,6 +11,7 @@ struct NewNoteSheet: View {
     @State private var recordingPhase: RecordingPhase = .idle
     @State private var elapsedSeconds: Int = 0
     @State private var selectedDetent: PresentationDetent = .fraction(0.7)
+    @State private var currentPage: NotePage = .notes
     @FocusState private var isEditing: Bool
 
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
@@ -21,18 +22,20 @@ struct NewNoteSheet: View {
         VStack(spacing: 0) {
             sheetToolbar
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    TextField("New Note", text: $meeting.title)
-                        .textFieldStyle(.automatic)
-                        .font(.system(.title, design: .serif))
-                        .padding(.horizontal, 16)
-                        .focused($isEditing)
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        TextField("New Note", text: $meeting.title)
+                            .textFieldStyle(.automatic)
+                            .font(.system(.title, design: .serif))
+                            .padding(.horizontal, 16)
+                            .focused($isEditing)
 
-                    notesEditor
-                        .padding(.horizontal, 12)
+                        notesEditor
+                            .padding(.horizontal, 12)
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
             }
 
             Spacer(minLength: 0)
@@ -53,6 +56,7 @@ struct NewNoteSheet: View {
         .presentationDetents([.fraction(0.7), .large], selection: $selectedDetent)
         .presentationDragIndicator(.visible)
         .presentationBackground(AppTheme.inputFill)
+        .presentationContentInteraction(.scrolls)
         .onChange(of: isEditing) { _, focused in
             if focused { selectedDetent = .large }
         }
@@ -128,87 +132,57 @@ private extension NewNoteSheet {
             case .paused:    pausedBar
             }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: recordingPhase)
     }
 
     var idleBar: some View {
-        Button {
+        RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream) {
             haptic.impactOccurred()
             startRecording()
-        } label: {
-            HStack {
-                Image(systemName: "waveform")
-                Text("Start Recording")
-                    .font(.system(size: 16, weight: .light))
-            }
-            .foregroundStyle(.black)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Capsule().fill(.white))
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
     }
 
     var activeBar: some View {
         HStack {
-            Button {
+            RecordingCapsuleButton(icon: "pause.fill", style: .darkOutline) {
                 haptic.impactOccurred()
                 pauseRecording()
-            } label: {
-                Text("Pause")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.primary)
             }
 
             Spacer()
 
-            AudioWaveformBars(audioLevel: coordinator.currentAudioLevel, isRecording: true)
-
             Text(formattedTime)
                 .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(AppTheme.textSecondary)
+                .foregroundStyle(AppTheme.accent)
 
             Spacer()
 
-            Button {
+            RecordingCapsuleButton("End", style: .cream) {
                 haptic.impactOccurred()
-                cancelRecording()
-            } label: {
-                Text("Cancel")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.red.opacity(0.8))
+                endRecording()
             }
         }
     }
 
     var pausedBar: some View {
         HStack {
-            Button {
+            RecordingCapsuleButton("Cancel", style: .darkOutline) {
                 haptic.impactOccurred()
-                resumeRecording()
-            } label: {
-                Text("Resume")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.primary)
+                cancelRecording()
             }
 
             Spacer()
 
-            Text("···")
-                .foregroundStyle(AppTheme.textTertiary)
-
             Text(formattedTime)
                 .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(AppTheme.textSecondary)
 
             Spacer()
 
-            Button {
+            
+            RecordingCapsuleButton("Resume", style: .darkOutline) {
                 haptic.impactOccurred()
-                endRecording()
-            } label: {
-                Text("End")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.red.opacity(0.8))
+                resumeRecording()
             }
         }
     }
