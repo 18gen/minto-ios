@@ -3,6 +3,8 @@ import SwiftData
 
 @main
 struct MintoApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Meeting.self,
@@ -22,5 +24,11 @@ struct MintoApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                // Recording continues via background audio mode;
+                // Live Activity keeps showing status on lock screen
+            }
+        }
     }
 }

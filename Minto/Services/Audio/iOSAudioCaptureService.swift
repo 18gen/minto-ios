@@ -26,6 +26,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
 
     private var cachedConverter: AVAudioConverter?
+    private var interruptionObserver: Any?
 
     private var _currentAudioLevel: Float = 0.0
     var currentAudioLevel: Float {
@@ -45,7 +46,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         }
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .measurement, options: [])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker])
         try session.setActive(true)
 
         let engine = AVAudioEngine()
@@ -91,9 +92,49 @@ final class iOSAudioCaptureService: @unchecked Sendable {
             _isCapturing = true
             chunkStartTime = .now
         }
+
+        // Listen for audio session interruptions (e.g. app backgrounded, phone call)
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil
+        ) { [weak self] notification in
+            self?.handleInterruption(notification)
+        }
+    }
+
+    private func handleInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            // Engine is paused by the system; just update state
+            break
+
+        case .ended:
+            let options = (userInfo[AVAudioSessionInterruptionOptionKey] as? UInt)
+                .map { AVAudioSession.InterruptionOptions(rawValue: $0) } ?? []
+
+            if options.contains(.shouldResume) {
+                let eng = lock.withLock { engine }
+                guard let eng else { return }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                try? eng.start()
+            }
+
+        @unknown default:
+            break
+        }
     }
 
     func stopCapture() async {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+            interruptionObserver = nil
+        }
+
         let eng = lock.withLock {
             let e = engine
             engine = nil

@@ -28,6 +28,8 @@ final class iOSRecordingCoordinator {
     private var committedText: String = ""
     private var recordingStartDate: Date = .now
     private var levelPollTimer: Timer?
+    private let activityManager = RecordingActivityManager.shared
+    private var lastActivityUpdateSecond: Int = -1
 
     private init() {}
 
@@ -94,6 +96,8 @@ final class iOSRecordingCoordinator {
 
             try await audioCaptureService.startCapture()
             isRecording = true
+            lastActivityUpdateSecond = -1
+            activityManager.startActivity(title: meeting.title)
 
             levelPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
                 guard let self else { return }
@@ -102,6 +106,13 @@ final class iOSRecordingCoordinator {
                     self.currentAudioLevel = self.audioCaptureService.currentAudioLevel
                     if self.recordingError != nil && self.audioCaptureService.hasReceivedNonSilence {
                         self.recordingError = nil
+                    }
+
+                    // Update Live Activity once per second
+                    let elapsed = Int(Date.now.timeIntervalSince(self.recordingStartDate))
+                    if elapsed != self.lastActivityUpdateSecond {
+                        self.lastActivityUpdateSecond = elapsed
+                        self.activityManager.updateActivity(elapsedSeconds: elapsed, isPaused: false)
                     }
                 }
             }
@@ -137,6 +148,8 @@ final class iOSRecordingCoordinator {
         currentMeeting?.endDate = .now
         currentMeeting = nil
         committedText = ""
+
+        activityManager.endActivity()
     }
 
     // MARK: - Deepgram (Cloud) Setup
