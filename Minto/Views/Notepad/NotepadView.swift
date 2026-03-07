@@ -5,7 +5,7 @@ struct NotepadView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var meeting: Meeting
 
-    @State private var showTranscriptPanel = false
+    @State private var currentPage: NotePage = .notes
     @State private var isAugmenting = false
     @State private var augmentError: String?
 
@@ -13,7 +13,9 @@ struct NotepadView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            content
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
+                content
+            }
             overlay
         }
         .background(AppTheme.background)
@@ -65,7 +67,7 @@ private extension NotepadView {
     }
 
     var overlay: some View {
-        NotepadBottomBar(meeting: meeting, showTranscriptPanel: $showTranscriptPanel)
+        NotepadBottomBar(meeting: meeting, currentPage: $currentPage)
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
     }

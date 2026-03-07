@@ -3,6 +3,7 @@ import SwiftData
 
 struct TranscriptPanelView: View {
     @Bindable var meeting: Meeting
+    var isInline: Bool = false
     @State private var coordinator = iOSRecordingCoordinator.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -19,79 +20,58 @@ struct TranscriptPanelView: View {
     ]
 
     var body: some View {
+        if isInline {
+            inlineBody
+        } else {
+            sheetBody
+        }
+    }
+
+    // MARK: - Inline mode (embedded in pager)
+
+    private var inlineBody: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Transcript")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    UIPasteboard.general.string = meeting.rawTranscript
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+
+            transcriptScrollView
+        }
+        .alert("Rename Speaker", isPresented: .init(
+            get: { editingSpeaker != nil },
+            set: { if !$0 { editingSpeaker = nil } }
+        )) {
+            if let speaker = editingSpeaker {
+                TextField("Name", text: .init(
+                    get: { speakerNames[speaker] ?? "" },
+                    set: { speakerNames[speaker] = $0 }
+                ))
+                Button("OK") { editingSpeaker = nil }
+                Button("Cancel", role: .cancel) { editingSpeaker = nil }
+            }
+        } message: {
+            Text("Enter a name for this speaker")
+        }
+    }
+
+    // MARK: - Sheet mode (existing behavior)
+
+    private var sheetBody: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            Text("Always get consent when transcribing others.")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                                .padding(.top, 16)
-
-                            if meeting.segments.isEmpty && meeting.rawTranscript.isEmpty && coordinator.currentPartial.isEmpty {
-                                Text("Transcript will appear here during recording...")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.top, 30)
-                            } else if !meeting.segments.isEmpty {
-                                let sortedSegments = meeting.segments.sorted { $0.startTime < $1.startTime }
-
-                                ForEach(Array(sortedSegments.enumerated()), id: \.element.id) { index, segment in
-                                    let showHeader = shouldShowHeader(at: index, in: sortedSegments)
-
-                                    if showHeader {
-                                        speakerHeader(segment: segment, index: index)
-                                    }
-
-                                    TranscriptBubble(
-                                        text: segment.text,
-                                        isPartial: false,
-                                        source: segment.source ?? "system",
-                                        speaker: segment.speaker,
-                                        speakerColor: colorForSpeaker(segment.speaker)
-                                    )
-                                    .id(segment.id)
-                                }
-
-                                if !coordinator.currentPartial.isEmpty {
-                                    TranscriptBubble(
-                                        text: coordinator.currentPartial,
-                                        isPartial: true,
-                                        source: "microphone",
-                                        speaker: nil,
-                                        speakerColor: nil
-                                    )
-                                    .id("partial")
-                                }
-                            } else if !meeting.rawTranscript.isEmpty || !coordinator.currentPartial.isEmpty {
-                                Text(meeting.rawTranscript)
-                                    .font(.callout)
-                                    .textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 8)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id("bottom")
-                    }
-                    .onChange(of: meeting.segments.count) {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
-                    }
-                    .onChange(of: coordinator.currentPartial) {
-                        withAnimation(.easeOut(duration: 0.1)) {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
-                    }
-                }
+                transcriptScrollView
             }
             .navigationTitle("Transcript")
             .navigationBarTitleDisplayMode(.inline)
@@ -124,6 +104,82 @@ struct TranscriptPanelView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - Shared scroll content
+
+    private var transcriptScrollView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 8) {
+                    Text("Always get consent when transcribing others.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 16)
+
+                    if meeting.segments.isEmpty && meeting.rawTranscript.isEmpty && coordinator.currentPartial.isEmpty {
+                        Text("Transcript will appear here during recording...")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 30)
+                    } else if !meeting.segments.isEmpty {
+                        let sortedSegments = meeting.segments.sorted { $0.startTime < $1.startTime }
+
+                        ForEach(Array(sortedSegments.enumerated()), id: \.element.id) { index, segment in
+                            let showHeader = shouldShowHeader(at: index, in: sortedSegments)
+
+                            if showHeader {
+                                speakerHeader(segment: segment, index: index)
+                            }
+
+                            TranscriptBubble(
+                                text: segment.text,
+                                isPartial: false,
+                                source: segment.source ?? "system",
+                                speaker: segment.speaker,
+                                speakerColor: colorForSpeaker(segment.speaker)
+                            )
+                            .id(segment.id)
+                        }
+
+                        if !coordinator.currentPartial.isEmpty {
+                            TranscriptBubble(
+                                text: coordinator.currentPartial,
+                                isPartial: true,
+                                source: "microphone",
+                                speaker: nil,
+                                speakerColor: nil
+                            )
+                            .id("partial")
+                        }
+                    } else if !meeting.rawTranscript.isEmpty || !coordinator.currentPartial.isEmpty {
+                        Text(meeting.rawTranscript)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+
+                Color.clear
+                    .frame(height: 1)
+                    .id("bottom")
+            }
+            .onChange(of: meeting.segments.count) {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+            .onChange(of: coordinator.currentPartial) {
+                withAnimation(.easeOut(duration: 0.1)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        }
     }
 
     // MARK: - Speaker Header

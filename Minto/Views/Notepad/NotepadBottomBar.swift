@@ -5,7 +5,7 @@ import UIKit
 struct NotepadBottomBar: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var meeting: Meeting
-    @Binding var showTranscriptPanel: Bool
+    @Binding var currentPage: NotePage
 
     @State private var coordinator = iOSRecordingCoordinator.shared
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
@@ -72,9 +72,6 @@ struct NotepadBottomBar: View {
             )
             .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
         }
-        .sheet(isPresented: $showTranscriptPanel) {
-            TranscriptPanelView(meeting: meeting)
-        }
         .sheet(isPresented: $showAskSheet) {
             askSheetContent
         }
@@ -105,10 +102,13 @@ struct NotepadBottomBar: View {
 
     private var recordingCapsule: some View {
         HStack(spacing: 10) {
-            AudioWaveformBars(audioLevel: coordinator.currentAudioLevel, isRecording: coordinator.isRecording)
 
-            Button { showTranscriptPanel.toggle() } label: {
-                Image(systemName: showTranscriptPanel ? "chevron.down" : "chevron.up")
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    currentPage = currentPage == .notes ? .transcript : .notes
+                }
+            } label: {
+                Image(systemName: currentPage == .notes ? "chevron.right" : "chevron.left")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.textSecondary)
                     .frame(width: 24, height: 24)
