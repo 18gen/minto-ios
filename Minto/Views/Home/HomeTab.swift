@@ -10,24 +10,11 @@ struct HomeTab: View {
 
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
-    @State private var sheetCalendarEvent: CalendarEvent?
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack(alignment: .bottom) {
                 List {
-                    Section {
-                        UpcomingSection(
-                            events: vm.calendarService.upcomingEvents,
-                            isLoading: vm.calendarService.isLoading,
-                            currentEventID: vm.calendarService.currentEvent?.id,
-                            onSelect: { event in openOrCreateMeeting(for: event) }
-                        )
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                    }
-
                     HistorySection(meetings: meetings, onSelect: { meeting in
                         navigationPath.append(meeting)
                     }, onDelete: { meeting in
@@ -37,7 +24,6 @@ struct HomeTab: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .refreshable { await vm.calendarService.refreshEvents() }
                 .contentMargins(.top, 12)
                 .contentMargins(.bottom, 120)
                 .onTapGesture { askFocused = false }
@@ -71,7 +57,7 @@ struct HomeTab: View {
             }
             .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
                 if let meeting = sheetMeeting {
-                    NewNoteSheet(meeting: meeting, calendarEvent: sheetCalendarEvent)
+                    NewNoteSheet(meeting: meeting)
                 }
             }
         }
@@ -82,28 +68,6 @@ struct HomeTab: View {
         modelContext.insert(meeting)
         try? modelContext.save()
         sheetMeeting = meeting
-        sheetCalendarEvent = nil
-        showNewNoteSheet = true
-    }
-
-    private func openOrCreateMeeting(for event: CalendarEvent) {
-        if let existing = meetings.first(where: { $0.calendarEventID == event.id }) {
-            let hasContent = !existing.userNotes.isEmpty || !existing.rawTranscript.isEmpty || !existing.augmentedNotes.isEmpty
-            if hasContent {
-                navigationPath.append(existing)
-            } else {
-                sheetMeeting = existing
-                sheetCalendarEvent = event
-                showNewNoteSheet = true
-            }
-            return
-        }
-        let meeting = Meeting(title: event.title)
-        meeting.calendarEventID = event.id
-        modelContext.insert(meeting)
-        try? modelContext.save()
-        sheetMeeting = meeting
-        sheetCalendarEvent = event
         showNewNoteSheet = true
     }
 
@@ -122,7 +86,6 @@ struct HomeTab: View {
         }
 
         sheetMeeting = nil
-        sheetCalendarEvent = nil
     }
 }
 

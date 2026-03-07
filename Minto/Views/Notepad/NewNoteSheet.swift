@@ -6,7 +6,6 @@ struct NewNoteSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Bindable var meeting: Meeting
-    var calendarEvent: CalendarEvent?
 
     @State private var coordinator = iOSRecordingCoordinator.shared
     @State private var recordingPhase: RecordingPhase = .idle
@@ -138,7 +137,7 @@ private extension NewNoteSheet {
         } label: {
             HStack {
                 Image(systemName: "waveform")
-                Text(calendarEvent != nil ? "Start now" : "Start Recording")
+                Text("Start Recording")
                     .font(.system(size: 16, weight: .light))
             }
             .foregroundStyle(.black)
@@ -218,18 +217,6 @@ private extension NewNoteSheet {
 // MARK: - Computed
 
 private extension NewNoteSheet {
-    var dateBadgeText: String {
-        let cal = Calendar.current
-        if cal.isDateInToday(meeting.startDate) { return "Today" }
-        if cal.isDateInTomorrow(meeting.startDate) { return "Tomorrow" }
-        return meeting.startDate.formatted(date: .abbreviated, time: .shortened)
-    }
-
-    var attendeesLabelText: String? {
-        guard let attendees = calendarEvent?.attendees, !attendees.isEmpty else { return nil }
-        return attendees.count == 1 ? attendees[0] : "\(attendees.count) attendees"
-    }
-
     var formattedTime: String {
         let m = elapsedSeconds / 60
         let s = elapsedSeconds % 60

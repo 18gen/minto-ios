@@ -6,7 +6,6 @@ final class Meeting {
     var title: String
     var startDate: Date
     var endDate: Date?
-    var calendarEventID: String?
 
     var userNotes: String
     var rawTranscript: String
@@ -26,7 +25,6 @@ final class Meeting {
         self.title = title
         self.startDate = startDate
         self.endDate = nil
-        self.calendarEventID = nil
         self.userNotes = ""
         self.rawTranscript = ""
         self.augmentedNotes = ""

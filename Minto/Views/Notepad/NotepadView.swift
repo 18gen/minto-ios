@@ -59,11 +59,6 @@ private extension NotepadView {
                 Label(dateBadgeText, systemImage: "calendar")
                     .metadataButtonStyle()
 
-                if let attendeesLabelText {
-                    Label(attendeesLabelText, systemImage: "person.2")
-                        .metadataButtonStyle()
-                }
-
                 Spacer()
             }
         }
@@ -114,15 +109,6 @@ private extension NotepadView {
         return meeting.startDate.formatted(date: .abbreviated, time: .shortened)
     }
 
-    var event: CalendarEvent? {
-        guard let id = meeting.calendarEventID else { return nil }
-        return GoogleCalendarService.shared.upcomingEvents.first { $0.id == id }
-    }
-
-    var attendeesLabelText: String? {
-        guard let attendees = event?.attendees, !attendees.isEmpty else { return nil }
-        return attendees.count == 1 ? attendees[0] : "\(attendees.count) attendees"
-    }
 }
 
 // MARK: - Actions

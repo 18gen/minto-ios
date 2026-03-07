@@ -9,7 +9,6 @@ final class HomeViewModel: ObservableObject {
     @Published var showAskResult = false
 
     let claudeService = ClaudeService.shared
-    let calendarService = GoogleCalendarService.shared
 
     static let quickPrompts: [QuickPrompt] = [
         .init(label: "List recent todos", icon: "pencil", prompt: "Please list all action items and todos from these recent meetings"),
@@ -17,11 +16,7 @@ final class HomeViewModel: ObservableObject {
         .init(label: "Write weekly recap", icon: "calendar", prompt: "Write a weekly recap based on my recent meetings"),
     ]
 
-    func onAppear() async {
-        guard iOSGoogleAuthService.shared.isAuthenticated else { return }
-        await calendarService.refreshEvents()
-        calendarService.startRefreshTimer()
-    }
+    func onAppear() async {}
 
     func ask(meetings: [Meeting], prompt: String) async {
         let q = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
