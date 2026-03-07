@@ -20,6 +20,9 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
     var onAudioChunkReady: ((Data) -> Void)?
 
+    /// Fires on every audio tap (~100ms) with raw Int16 PCM bytes for streaming to Deepgram.
+    var onRawPCMReady: ((Data) -> Void)?
+
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
 
     private var cachedConverter: AVAudioConverter?
@@ -69,6 +72,12 @@ final class iOSAudioCaptureService: @unchecked Sendable {
                         if !self._hasReceivedNonSilence && rms > 0.0001 {
                             self._hasReceivedNonSilence = true
                         }
+                    }
+
+                    // Stream raw Int16 PCM for Deepgram
+                    if let pcmCallback = self.onRawPCMReady {
+                        let int16Data = Self.float32ToInt16PCM(samplesArray)
+                        pcmCallback(int16Data)
                     }
 
                     self.accumulateSamples(samplesArray)
@@ -160,6 +169,20 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         } catch {
             return nil
         }
+    }
+
+    // MARK: - Float32 → Int16 PCM
+
+    static func float32ToInt16PCM(_ samples: [Float]) -> Data {
+        var data = Data(count: samples.count * 2)
+        data.withUnsafeMutableBytes { rawBuffer in
+            let int16Buffer = rawBuffer.bindMemory(to: Int16.self)
+            for i in samples.indices {
+                let clamped = max(-1.0, min(1.0, samples[i]))
+                int16Buffer[i] = Int16(clamped * Float(Int16.max))
+            }
+        }
+        return data
     }
 
     // MARK: - Audio Conversion

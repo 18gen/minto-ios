@@ -3,6 +3,11 @@ import SwiftData
 import Observation
 import AVFoundation
 
+enum TranscriptionMode: String, CaseIterable {
+    case cloud    // Deepgram Nova-3 (real-time, diarization)
+    case onDevice // Whisper / Kotoba (offline, no diarization)
+}
+
 @Observable
 @MainActor
 final class iOSRecordingCoordinator {
@@ -10,10 +15,12 @@ final class iOSRecordingCoordinator {
 
     private let audioCaptureService = iOSAudioCaptureService()
     private let whisperService = WhisperService()
+    private let deepgramService = DeepgramStreamingService()
 
     var isRecording = false
     var currentMeeting: Meeting?
     var recordingError: String?
+    var transcriptionMode: TranscriptionMode = .cloud
 
     var currentPartial: String = ""
     var currentAudioLevel: Float = 0.0
@@ -24,6 +31,19 @@ final class iOSRecordingCoordinator {
 
     private init() {}
 
+    /// Resolves which transcription mode to use based on available keys.
+    private func resolveTranscriptionMode() -> TranscriptionMode {
+        // If user has set .cloud but no Deepgram key, fall back
+        if transcriptionMode == .cloud && AppSettings.deepgramKey.isEmpty {
+            return .onDevice
+        }
+        // If user has set .onDevice but no Whisper key, try cloud
+        if transcriptionMode == .onDevice && AppSettings.whisperKey.isEmpty && !AppSettings.deepgramKey.isEmpty {
+            return .cloud
+        }
+        return transcriptionMode
+    }
+
     func startRecording(meeting: Meeting, modelContext: ModelContext) async {
         recordingError = nil
         currentMeeting = meeting
@@ -32,9 +52,11 @@ final class iOSRecordingCoordinator {
         currentPartial = ""
         recordingStartDate = .now
 
-        let apiKey = AppSettings.whisperKey
-        guard !apiKey.isEmpty else {
-            recordingError = "OpenAI API key not configured. Add it in Settings."
+        let effectiveMode = resolveTranscriptionMode()
+
+        // Validate we have at least one API key
+        if effectiveMode == .onDevice && AppSettings.whisperKey.isEmpty {
+            recordingError = "No API key configured. Add a Deepgram or OpenAI key."
             meeting.status = "idle"
             return
         }
@@ -57,17 +79,19 @@ final class iOSRecordingCoordinator {
             return
         }
 
-        audioCaptureService.onAudioChunkReady = { [weak self] wavData in
-            guard let self else { return }
-            Task { @MainActor [weak self] in
-                self?.currentPartial = "..."
-            }
-            Task {
-                await self.transcribeChunk(wavData)
-            }
+        // Set up callbacks based on mode
+        if effectiveMode == .cloud {
+            setupDeepgramCallbacks()
+        } else {
+            setupWhisperCallbacks()
         }
 
         do {
+            // Connect Deepgram WebSocket before starting audio capture
+            if effectiveMode == .cloud {
+                try deepgramService.connect()
+            }
+
             try await audioCaptureService.startCapture()
             isRecording = true
 
@@ -92,6 +116,7 @@ final class iOSRecordingCoordinator {
         } catch {
             recordingError = "Failed to start: \(error.localizedDescription)"
             meeting.status = "idle"
+            deepgramService.disconnect()
         }
     }
 
@@ -99,6 +124,10 @@ final class iOSRecordingCoordinator {
         levelPollTimer?.invalidate()
         levelPollTimer = nil
         currentAudioLevel = 0.0
+
+        deepgramService.disconnect()
+        audioCaptureService.onRawPCMReady = nil
+        audioCaptureService.onAudioChunkReady = nil
 
         await audioCaptureService.stopCapture()
 
@@ -108,6 +137,122 @@ final class iOSRecordingCoordinator {
         currentMeeting?.endDate = .now
         currentMeeting = nil
         committedText = ""
+    }
+
+    // MARK: - Deepgram (Cloud) Setup
+
+    private func setupDeepgramCallbacks() {
+        // Stream raw PCM to Deepgram
+        audioCaptureService.onRawPCMReady = { [weak self] pcmData in
+            self?.deepgramService.sendAudio(pcmData)
+        }
+
+        // Don't use WAV chunk callback in cloud mode
+        audioCaptureService.onAudioChunkReady = nil
+
+        // Receive transcripts from Deepgram
+        deepgramService.onTranscript = { [weak self] result in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.handleDeepgramResult(result)
+            }
+        }
+
+        deepgramService.onError = { [weak self] error in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.recordingError = "Deepgram: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @MainActor
+    private func handleDeepgramResult(_ result: DeepgramStreamingService.TranscriptResult) {
+        guard let meeting = currentMeeting else { return }
+
+        let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        if !result.isFinal {
+            // Interim result — show as partial
+            currentPartial = text
+            return
+        }
+
+        // Final result — commit
+        currentPartial = ""
+
+        if !committedText.isEmpty {
+            committedText += "\n"
+        }
+        committedText += text
+        meeting.rawTranscript = committedText
+
+        // Group words by speaker runs and create segments
+        let speakerRuns = groupWordsBySpeaker(result.words)
+
+        for run in speakerRuns {
+            let runText = run.words.map(\.word).joined(separator: "")
+            guard !runText.isEmpty else { continue }
+
+            let startTime = run.words.first?.start ?? 0
+            let endTime = run.words.last?.end ?? startTime
+
+            // Merge with last segment if same speaker
+            if let lastSegment = meeting.segments.last,
+               lastSegment.speaker == run.speaker,
+               lastSegment.source == "microphone" {
+                lastSegment.text += runText
+                lastSegment.endTime = endTime
+            } else {
+                let segment = TranscriptSegment(
+                    text: runText,
+                    startTime: startTime,
+                    endTime: endTime,
+                    source: "microphone",
+                    speaker: run.speaker
+                )
+                meeting.segments.append(segment)
+            }
+        }
+    }
+
+    private struct SpeakerRun {
+        let speaker: Int
+        var words: [DeepgramStreamingService.Word]
+    }
+
+    private func groupWordsBySpeaker(_ words: [DeepgramStreamingService.Word]) -> [SpeakerRun] {
+        guard let first = words.first else { return [] }
+
+        var runs: [SpeakerRun] = [SpeakerRun(speaker: first.speaker, words: [first])]
+
+        for word in words.dropFirst() {
+            if word.speaker == runs[runs.count - 1].speaker {
+                runs[runs.count - 1].words.append(word)
+            } else {
+                runs.append(SpeakerRun(speaker: word.speaker, words: [word]))
+            }
+        }
+
+        return runs
+    }
+
+    // MARK: - Whisper (On-Device / Legacy) Setup
+
+    private func setupWhisperCallbacks() {
+        // Don't stream raw PCM in on-device mode
+        audioCaptureService.onRawPCMReady = nil
+
+        audioCaptureService.onAudioChunkReady = { [weak self] wavData in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.currentPartial = "..."
+            }
+            Task {
+                await self.transcribeChunk(wavData)
+            }
+        }
     }
 
     // MARK: - Whisper Micro-Batch
@@ -157,7 +302,7 @@ final class iOSRecordingCoordinator {
                 self.currentPartial = ""
                 meeting.rawTranscript = self.committedText
 
-                // All segments are microphone on iOS
+                // All segments are microphone on iOS (no speaker diarization in Whisper mode)
                 if let lastSegment = meeting.segments.last, lastSegment.source == "microphone" {
                     lastSegment.text += " " + text
                     lastSegment.endTime = elapsedSeconds
