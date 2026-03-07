@@ -332,7 +332,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F85CE85E2F5BA9900030394A /* Build configuration list for PBXProject "Mint" */ = {
+		F85CE85E2F5BA9900030394A /* Build configuration list for PBXProject "Minto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F85CE86E2F5BA9920030394A /* Debug */,

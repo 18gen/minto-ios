@@ -49,21 +49,16 @@ struct NotepadBottomBar: View {
                 }
 
                 HStack(spacing: 10) {
-                    if !askFocused {
-                        recordingCapsule
-                    }
-
                     AskBar(
                         text: $askText,
                         isAsking: $isAsking,
                         focus: $askFocused,
-                        placeholder: askFocused ? "Type / for recipes" : "Ask anything",
+                        placeholder: "Ask anything",
                         onSend: { Task { await askQuestion() } }
-                    ) {
-                        if !askFocused, let first = receipts.first {
-                            ReceiptPill(receipt: first) { applyReceipt(first) }
-                                .transition(.opacity)
-                        }
+                    )
+
+                    if !askFocused {
+                        recordingCapsule
                     }
                 }
             }

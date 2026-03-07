@@ -28,7 +28,7 @@ final class iOSRecordingCoordinator {
         recordingError = nil
         currentMeeting = meeting
         meeting.status = "recording"
-        committedText = ""
+        committedText = meeting.rawTranscript
         currentPartial = ""
         recordingStartDate = .now
 

@@ -8,6 +8,10 @@ struct HomeTab: View {
     @StateObject private var vm = HomeViewModel()
     @FocusState private var askFocused: Bool
 
+    @State private var showNewNoteSheet = false
+    @State private var sheetMeeting: Meeting?
+    @State private var sheetCalendarEvent: CalendarEvent?
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack(alignment: .bottom) {
@@ -65,6 +69,11 @@ struct HomeTab: View {
                 }
                 .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
+                if let meeting = sheetMeeting {
+                    NewNoteSheet(meeting: meeting, calendarEvent: sheetCalendarEvent)
+                }
+            }
         }
     }
 
@@ -72,19 +81,48 @@ struct HomeTab: View {
         let meeting = Meeting(title: "")
         modelContext.insert(meeting)
         try? modelContext.save()
-        navigationPath.append(meeting)
+        sheetMeeting = meeting
+        sheetCalendarEvent = nil
+        showNewNoteSheet = true
     }
 
     private func openOrCreateMeeting(for event: CalendarEvent) {
         if let existing = meetings.first(where: { $0.calendarEventID == event.id }) {
-            navigationPath.append(existing)
+            let hasContent = !existing.userNotes.isEmpty || !existing.rawTranscript.isEmpty || !existing.augmentedNotes.isEmpty
+            if hasContent {
+                navigationPath.append(existing)
+            } else {
+                sheetMeeting = existing
+                sheetCalendarEvent = event
+                showNewNoteSheet = true
+            }
             return
         }
         let meeting = Meeting(title: event.title)
         meeting.calendarEventID = event.id
         modelContext.insert(meeting)
         try? modelContext.save()
-        navigationPath.append(meeting)
+        sheetMeeting = meeting
+        sheetCalendarEvent = event
+        showNewNoteSheet = true
+    }
+
+    private func handleSheetDismiss() {
+        guard let meeting = sheetMeeting else { return }
+
+        let coordinator = iOSRecordingCoordinator.shared
+        if coordinator.isRecording {
+            Task { await coordinator.stopRecording() }
+        }
+
+        let titleEmpty = meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if titleEmpty && meeting.userNotes.isEmpty && meeting.rawTranscript.isEmpty {
+            modelContext.delete(meeting)
+            try? modelContext.save()
+        }
+
+        sheetMeeting = nil
+        sheetCalendarEvent = nil
     }
 }
 
