@@ -11,6 +11,8 @@ struct NewNoteSheet: View {
     @State private var coordinator = iOSRecordingCoordinator.shared
     @State private var recordingPhase: RecordingPhase = .idle
     @State private var elapsedSeconds: Int = 0
+    @State private var selectedDetent: PresentationDetent = .fraction(0.7)
+    @FocusState private var isEditing: Bool
 
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
@@ -26,6 +28,7 @@ struct NewNoteSheet: View {
                         .textFieldStyle(.automatic)
                         .font(.system(.title, design: .serif))
                         .padding(.horizontal, 16)
+                        .focused($isEditing)
 
                     notesEditor
                         .padding(.horizontal, 12)
@@ -48,9 +51,12 @@ struct NewNoteSheet: View {
                 .padding(.bottom, 16)
         }
         .background(AppTheme.inputFill)
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.7), .large], selection: $selectedDetent)
         .presentationDragIndicator(.visible)
-        .presentationBackground(AppTheme.background)
+        .presentationBackground(AppTheme.inputFill)
+        .onChange(of: isEditing) { _, focused in
+            if focused { selectedDetent = .large }
+        }
         .task(id: recordingPhase) {
             guard recordingPhase == .recording else { return }
             while !Task.isCancelled {
@@ -69,12 +75,12 @@ private extension NewNoteSheet {
             HStack(spacing: 16) {
                 Button { } label: {
                     Image(systemName: "photo")
-                        .font(.system(size: 16))
+                        .font(.system(size: 20))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
                 Button { } label: {
                     Image(systemName: "camera")
-                        .font(.system(size: 16))
+                        .font(.system(size: 20))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
@@ -83,12 +89,13 @@ private extension NewNoteSheet {
 
             Button { dismiss() } label: {
                 Image(systemName: "trash")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.red.opacity(0.8))
+                    .font(.system(size: 20))
+                    .foregroundStyle(AppTheme.textSecondary)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
     }
 
     var notesEditor: some View {
@@ -97,6 +104,7 @@ private extension NewNoteSheet {
                 .font(.system(size: 15))
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 150)
+                .focused($isEditing)
 
             if meeting.userNotes.isEmpty {
                 Text("Write notes here...")
@@ -121,7 +129,6 @@ private extension NewNoteSheet {
             case .paused:    pausedBar
             }
         }
-        .glassSurface(cornerRadius: AppTheme.barCorner, padding: 12)
     }
 
     var idleBar: some View {
@@ -130,12 +137,14 @@ private extension NewNoteSheet {
             startRecording()
         } label: {
             HStack {
-                Circle().fill(.red).frame(width: 10, height: 10)
+                Image(systemName: "waveform")
                 Text(calendarEvent != nil ? "Start now" : "Start Recording")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 16, weight: .light))
             }
+            .foregroundStyle(.black)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .padding(.vertical, 12)
+            .background(Capsule().fill(.white))
         }
         .buttonStyle(.plain)
     }

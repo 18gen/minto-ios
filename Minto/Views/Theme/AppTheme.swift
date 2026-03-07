@@ -8,7 +8,7 @@ enum AppTheme {
     static let background = Color.black
 
     // surfaces
-    static let surfaceFill = Color.primary.opacity(0.06)
+    static let surfaceFill = Color(white: 0.17)
     static let inputFill = Color(white: 0.17)
     static let surfaceStroke = Color.white.opacity(0.10)
     static let surfaceStrokeStrong = Color.white.opacity(0.16)
