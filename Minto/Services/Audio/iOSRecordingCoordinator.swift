@@ -38,6 +38,20 @@ final class iOSRecordingCoordinator {
     private let activityManager = RecordingActivityManager.shared
     private var activeMode: TranscriptionMode = .elevenLabs
 
+    /// Total seconds accumulated from previous recording segments (before current active segment)
+    private var accumulatedRecordingSeconds: TimeInterval = 0
+    /// Wall-clock time when the current active segment started
+    private var currentSegmentStartDate: Date = .now
+
+    /// Total elapsed recording time (accumulated + current segment)
+    var totalElapsedSeconds: TimeInterval {
+        if isRecording {
+            return accumulatedRecordingSeconds + Date.now.timeIntervalSince(currentSegmentStartDate)
+        } else {
+            return accumulatedRecordingSeconds
+        }
+    }
+
     private let backgroundLock = NSLock()
     private var _isInBackground = false
     private var _backgroundAudioBuffer: [Data] = []
@@ -66,11 +80,20 @@ final class iOSRecordingCoordinator {
 
     func startRecording(meeting: Meeting, modelContext _: ModelContext) async {
         recordingError = nil
+
+        let isResume = currentMeeting === meeting && accumulatedRecordingSeconds > 0
         currentMeeting = meeting
         meeting.status = "recording"
-        committedText = meeting.rawTranscript
         currentPartial = ""
-        recordingStartDate = .now
+        currentSegmentStartDate = .now
+
+        if isResume {
+            // Keep accumulated time and committed text
+        } else {
+            accumulatedRecordingSeconds = 0
+            committedText = meeting.rawTranscript
+            recordingStartDate = .now
+        }
 
         let effectiveMode = resolveTranscriptionMode()
         activeMode = effectiveMode
@@ -125,7 +148,13 @@ final class iOSRecordingCoordinator {
 
             try await audioCaptureService.startCapture()
             isRecording = true
-            activityManager.startActivity(title: meeting.title, startDate: recordingStartDate)
+
+            let syntheticStart = Date.now - accumulatedRecordingSeconds
+            if isResume {
+                activityManager.updateActivity(isPaused: false, startDate: syntheticStart, accumulatedSeconds: Int(accumulatedRecordingSeconds))
+            } else {
+                activityManager.startActivity(title: meeting.title, startDate: syntheticStart)
+            }
 
             startLevelPollTimer()
 
@@ -144,6 +173,29 @@ final class iOSRecordingCoordinator {
         }
     }
 
+    /// Pause recording — keeps accumulated time, updates Live Activity to paused state.
+    func pauseRecording() async {
+        levelPollTimer?.invalidate()
+        levelPollTimer = nil
+        currentAudioLevel = 0.0
+
+        elevenLabsService.disconnect()
+        deepgramService.disconnect()
+        audioCaptureService.onRawPCMReady = nil
+        audioCaptureService.onAudioChunkReady = nil
+
+        await audioCaptureService.stopCapture()
+
+        // Accumulate elapsed time from this segment
+        accumulatedRecordingSeconds += Date.now.timeIntervalSince(currentSegmentStartDate)
+
+        currentPartial = ""
+        isRecording = false
+
+        activityManager.updateActivity(isPaused: true, startDate: .now, accumulatedSeconds: Int(accumulatedRecordingSeconds))
+    }
+
+    /// Fully stop recording — ends session and Live Activity.
     func stopRecording() async {
         levelPollTimer?.invalidate()
         levelPollTimer = nil
@@ -172,6 +224,7 @@ final class iOSRecordingCoordinator {
         currentPartial = ""
         isRecording = false
         currentMeeting?.endDate = .now
+        accumulatedRecordingSeconds = 0
 
         activityManager.endActivity()
 
