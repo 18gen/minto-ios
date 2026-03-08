@@ -8,6 +8,7 @@ struct HomeTab: View {
     @StateObject private var vm = HomeViewModel()
     @FocusState private var askFocused: Bool
 
+    @State private var showSettings = false
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
 
@@ -16,6 +17,7 @@ struct HomeTab: View {
             ZStack(alignment: .bottom) {
                 List {
                     HistorySection(meetings: meetings, onSelect: { meeting in
+                        guard navigationPath.isEmpty else { return }
                         navigationPath.append(meeting)
                     }, onDelete: { meeting in
                         modelContext.delete(meeting)
@@ -35,12 +37,15 @@ struct HomeTab: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        SettingsTab()
+                    Button {
+                        showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showSettings) {
+                SettingsTab()
             }
             .navigationDestination(for: Meeting.self) { meeting in
                 NotepadView(meeting: meeting)
