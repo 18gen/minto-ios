@@ -24,35 +24,19 @@ struct TightLabelStyle: LabelStyle {
 }
 
 struct MetadataButtonStyle: ViewModifier {
-    @State private var isHovering = false
-
-    private var outline: Color { .primary.opacity(0.3) }
-
     func body(content: Content) -> some View {
         content
-            .font(.body)
+            .font(.caption)
             .labelStyle(TightLabelStyle(
                 spacing: 4,
-                iconColor: outline,
+                iconColor: .primary.opacity(0.3),
                 titleColor: .primary.opacity(0.95)
             ))
             .symbolRenderingMode(.hierarchical)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isHovering ? Color.secondary.opacity(0.12) : .clear)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(outline, lineWidth: 0.5)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-            #if os(macOS)
-            .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.12)) { isHovering = hover }
-            }
-            #endif
+            .background(Capsule().fill(Color(white: 0.17)))
+            .contentShape(Capsule())
     }
 }
 

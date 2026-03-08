@@ -24,7 +24,7 @@ struct HomeTab: View {
                         try? modelContext.save()
                     })
                 }
-                .listStyle(.plain)
+                .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
                 .contentMargins(.top, 12)
                 .contentMargins(.bottom, 120)

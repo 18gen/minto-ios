@@ -13,59 +13,86 @@ struct HistorySection: View {
         ForEach(dates, id: \.self) { date in
             Section {
                 ForEach(grouped[date] ?? []) { meeting in
-                    meetingRow(meeting)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 20, bottom: 2, trailing: 20))
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                onDelete?(meeting)
-                            } label: {
-                                Image(systemName: "trash")
-                            }
+                    Button { onSelect(meeting) } label: {
+                        meetingRow(meeting)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            onDelete?(meeting)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
                         }
+                    }
                 }
             } header: {
                 Text(DateHeaderFormatter.string(date))
-                    .font(.system(size: 13, weight: .medium, design: .serif))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 5)
+                    .font(.system(size: 17, weight: .medium, design: .serif))
+                    .foregroundStyle(.primary)
                     .textCase(nil)
             }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .headerProminence(.increased)
         }
     }
 
     private func meetingRow(_ meeting: Meeting) -> some View {
-        Button { onSelect(meeting) } label: {
-            HStack(spacing: 14) {
+        HStack(spacing: 12) {
+            if hasTranscript(meeting) {
+                IconBadge(icon: "waveform", tint: AppTheme.accent)
+            } else {
                 IconBadge()
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(meeting.title.isEmpty ? "New Note" : meeting.title)
-                        .font(.system(size: 14))
-                        .lineLimit(1)
-
-                    Text("Me")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Text(meeting.startDate.formatted(date: .omitted, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.1))
-            )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(meeting.title.isEmpty ? "New Note" : meeting.title)
+                    .font(.headline)
+                    .lineLimit(1)
+
+                HStack(spacing: 0) {
+                    Text(meeting.startDate.formatted(date: .omitted, time: .shortened))
+
+                    if let dur = formattedDuration(meeting) {
+                        Text("  \(dur)")
+                    }
+
+                    if let sub = subtitle(for: meeting) {
+                        Text("  \(sub)")
+                            .lineLimit(1)
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
         }
-        .buttonStyle(.plain)
+    }
+
+    // MARK: - Helpers
+
+    private func hasTranscript(_ meeting: Meeting) -> Bool {
+        !meeting.rawTranscript.isEmpty || !meeting.segments.isEmpty
+    }
+
+    private func subtitle(for meeting: Meeting) -> String? {
+        let notes = meeting.userNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !notes.isEmpty {
+            return notes.components(separatedBy: .newlines).first
+        }
+        if hasTranscript(meeting) {
+            return "Transcript available"
+        }
+        return nil
+    }
+
+    private func formattedDuration(_ meeting: Meeting) -> String? {
+        guard let end = meeting.endDate else { return nil }
+        let seconds = Int(end.timeIntervalSince(meeting.startDate))
+        guard seconds > 0 else { return nil }
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+        }
+        return "\(max(minutes, 1))m"
     }
 }
