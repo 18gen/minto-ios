@@ -104,14 +104,14 @@ private extension NewNoteSheet {
     var notesEditor: some View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $meeting.userNotes)
-                .font(.system(size: 15))
+                .font(.system(size: 17))
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 150)
                 .focused($isEditing)
 
             if meeting.userNotes.isEmpty {
                 Text("Write notes here...")
-                    .font(.system(size: 15))
+                    .font(.system(size: 17))
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 8)
@@ -136,11 +136,10 @@ private extension NewNoteSheet {
     }
 
     var idleBar: some View {
-        RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream) {
+        RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
             haptic.impactOccurred()
             startRecording()
         }
-        .frame(maxWidth: .infinity)
     }
 
     var activeBar: some View {
