@@ -160,31 +160,34 @@ private extension NewNoteSheet {
 
             Spacer()
 
-            RecordingCapsuleButton("End", style: .cream) {
-                haptic.impactOccurred()
-                endRecording()
-            }
+            endOrDismissKeyboardButton
         }
     }
 
     var pausedBar: some View {
         HStack {
-            RecordingCapsuleButton("Cancel", style: .darkOutline) {
+            RecordingCapsuleButton(icon: "play.fill", style: .darkOutline) {
                 haptic.impactOccurred()
-                cancelRecording()
+                resumeRecording()
             }
 
             Spacer()
 
-            Text(formattedTime)
-                .font(.system(size: 14, design: .monospaced))
+            endOrDismissKeyboardButton
+        }
+    }
 
-            Spacer()
-
-            
-            RecordingCapsuleButton("Resume", style: .darkOutline) {
+    @ViewBuilder
+    var endOrDismissKeyboardButton: some View {
+        if isEditing {
+            RecordingCapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
                 haptic.impactOccurred()
-                resumeRecording()
+                isEditing = false
+            }
+        } else {
+            RecordingCapsuleButton("End", style: .cream) {
+                haptic.impactOccurred()
+                endRecording()
             }
         }
     }
@@ -225,16 +228,6 @@ private extension NewNoteSheet {
             if coordinator.isRecording {
                 recordingPhase = .recording
             }
-        }
-    }
-
-    func cancelRecording() {
-        Task {
-            await coordinator.stopRecording()
-            recordingPhase = .idle
-            elapsedSeconds = 0
-            meeting.rawTranscript = ""
-            meeting.segments.removeAll()
         }
     }
 
