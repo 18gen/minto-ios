@@ -28,6 +28,14 @@ final class iOSAudioCaptureService: @unchecked Sendable {
     private var cachedConverter: AVAudioConverter?
     private var interruptionObserver: Any?
 
+    private var fullRecordingSamples: [Float] = []
+    private var _shouldAccumulateFullRecording = false
+
+    var shouldAccumulateFullRecording: Bool {
+        get { lock.withLock { _shouldAccumulateFullRecording } }
+        set { lock.withLock { _shouldAccumulateFullRecording = newValue } }
+    }
+
     private var _currentAudioLevel: Float = 0.0
     var currentAudioLevel: Float {
         lock.withLock { _currentAudioLevel }
@@ -43,6 +51,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
             _hasReceivedNonSilence = false
             _currentAudioLevel = 0.0
             samples = []
+            fullRecordingSamples = []
         }
 
         let session = AVAudioSession.sharedInstance()
@@ -79,6 +88,12 @@ final class iOSAudioCaptureService: @unchecked Sendable {
                     if let pcmCallback = self.onRawPCMReady {
                         let int16Data = Self.float32ToInt16PCM(samplesArray)
                         pcmCallback(int16Data)
+                    }
+
+                    if self.lock.withLock({ self._shouldAccumulateFullRecording }) {
+                        self.lock.withLock {
+                            self.fullRecordingSamples.append(contentsOf: samplesArray)
+                        }
                     }
 
                     self.accumulateSamples(samplesArray)
@@ -150,6 +165,8 @@ final class iOSAudioCaptureService: @unchecked Sendable {
             _currentAudioLevel = 0.0
             _hasReceivedNonSilence = false
             cachedConverter = nil
+            // Note: fullRecordingSamples is NOT cleared here —
+            // coordinator calls saveFullRecording() before stopCapture()
             return s
         }
 
@@ -158,6 +175,43 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         }
 
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    // MARK: - Full Recording Save
+
+    /// Saves all accumulated audio to a persistent WAV file and returns its URL.
+    /// Call this before `stopCapture()` when batch processing is needed.
+    func saveFullRecording() -> URL? {
+        let samples = lock.withLock {
+            let s = fullRecordingSamples
+            fullRecordingSamples = []
+            return s
+        }
+        guard !samples.isEmpty else { return nil }
+
+        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false)!
+
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let audioDir = documentsDir.appendingPathComponent("recordings", isDirectory: true)
+        try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
+        let fileURL = audioDir.appendingPathComponent("\(UUID().uuidString).wav")
+
+        do {
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else {
+                return nil
+            }
+            buffer.frameLength = AVAudioFrameCount(samples.count)
+            let dst = buffer.floatChannelData![0]
+            samples.withUnsafeBufferPointer { src in
+                dst.update(from: src.baseAddress!, count: samples.count)
+            }
+
+            let file = try AVAudioFile(forWriting: fileURL, settings: format.settings)
+            try file.write(from: buffer)
+            return fileURL
+        } catch {
+            return nil
+        }
     }
 
     // MARK: - Sample Accumulation
