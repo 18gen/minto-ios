@@ -4,8 +4,9 @@ import Observation
 import AVFoundation
 
 enum TranscriptionMode: String, CaseIterable {
-    case cloud    // Deepgram Nova-3 (real-time, diarization)
-    case onDevice // Whisper / Kotoba (offline, no diarization)
+    case elevenLabs // ElevenLabs Scribe v2 (best Japanese accuracy)
+    case cloud      // Deepgram Nova-3 (fallback)
+    case onDevice   // Whisper (offline fallback)
 }
 
 @Observable
@@ -16,30 +17,42 @@ final class iOSRecordingCoordinator {
     private let audioCaptureService = iOSAudioCaptureService()
     private let whisperService = WhisperService()
     private let deepgramService = DeepgramStreamingService()
+    private let elevenLabsService = ElevenLabsStreamingService()
+    private let elevenLabsBatchService = ElevenLabsBatchService()
 
     var isRecording = false
     var currentMeeting: Meeting?
     var recordingError: String?
-    var transcriptionMode: TranscriptionMode = .cloud
+    var transcriptionMode: TranscriptionMode = .elevenLabs
 
     var currentPartial: String = ""
     var currentAudioLevel: Float = 0.0
+
+    var isProcessingBatch = false
+    var batchProcessingStatus: String = ""
 
     private var committedText: String = ""
     private var recordingStartDate: Date = .now
     private var levelPollTimer: Timer?
     private let activityManager = RecordingActivityManager.shared
     private var lastActivityUpdateSecond: Int = -1
+    private var activeMode: TranscriptionMode = .elevenLabs
 
     private init() {}
 
     /// Resolves which transcription mode to use based on available keys.
     private func resolveTranscriptionMode() -> TranscriptionMode {
-        // If user has set .cloud but no Deepgram key, fall back
+        if transcriptionMode == .elevenLabs && !AppSettings.elevenLabsKey.isEmpty {
+            return .elevenLabs
+        }
+        // ElevenLabs key missing — fall back
+        if transcriptionMode == .elevenLabs {
+            if !AppSettings.deepgramKey.isEmpty { return .cloud }
+            if !AppSettings.whisperKey.isEmpty { return .onDevice }
+        }
         if transcriptionMode == .cloud && AppSettings.deepgramKey.isEmpty {
             return .onDevice
         }
-        // If user has set .onDevice but no Whisper key, try cloud
         if transcriptionMode == .onDevice && AppSettings.whisperKey.isEmpty && !AppSettings.deepgramKey.isEmpty {
             return .cloud
         }
@@ -55,10 +68,11 @@ final class iOSRecordingCoordinator {
         recordingStartDate = .now
 
         let effectiveMode = resolveTranscriptionMode()
+        activeMode = effectiveMode
 
         // Validate we have at least one API key
         if effectiveMode == .onDevice && AppSettings.whisperKey.isEmpty {
-            recordingError = "No API key configured. Add a Deepgram or OpenAI key."
+            recordingError = "No API key configured. Add an ElevenLabs, Deepgram, or OpenAI key."
             meeting.status = "idle"
             return
         }
@@ -82,16 +96,27 @@ final class iOSRecordingCoordinator {
         }
 
         // Set up callbacks based on mode
-        if effectiveMode == .cloud {
+        switch effectiveMode {
+        case .elevenLabs:
+            setupElevenLabsCallbacks()
+            audioCaptureService.shouldAccumulateFullRecording = true
+        case .cloud:
             setupDeepgramCallbacks()
-        } else {
+            audioCaptureService.shouldAccumulateFullRecording = false
+        case .onDevice:
             setupWhisperCallbacks()
+            audioCaptureService.shouldAccumulateFullRecording = false
         }
 
         do {
-            // Connect Deepgram WebSocket before starting audio capture
-            if effectiveMode == .cloud {
+            // Connect WebSocket before starting audio capture
+            switch effectiveMode {
+            case .elevenLabs:
+                try elevenLabsService.connect()
+            case .cloud:
                 try deepgramService.connect()
+            case .onDevice:
+                break
             }
 
             try await audioCaptureService.startCapture()
@@ -127,6 +152,7 @@ final class iOSRecordingCoordinator {
         } catch {
             recordingError = "Failed to start: \(error.localizedDescription)"
             meeting.status = "idle"
+            elevenLabsService.disconnect()
             deepgramService.disconnect()
         }
     }
@@ -136,20 +162,166 @@ final class iOSRecordingCoordinator {
         levelPollTimer = nil
         currentAudioLevel = 0.0
 
+        elevenLabsService.disconnect()
         deepgramService.disconnect()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
+
+        // Save full recording before stopping capture (samples cleared on stop)
+        var savedAudioURL: URL?
+        if activeMode == .elevenLabs {
+            savedAudioURL = audioCaptureService.saveFullRecording()
+        }
 
         await audioCaptureService.stopCapture()
 
         currentPartial = ""
         isRecording = false
-        currentMeeting?.status = "done"
         currentMeeting?.endDate = .now
-        currentMeeting = nil
-        committedText = ""
 
         activityManager.endActivity()
+
+        // If ElevenLabs mode, run batch diarization + LLM pipeline
+        if activeMode == .elevenLabs, let meeting = currentMeeting, let audioURL = savedAudioURL {
+            meeting.status = "processing"
+            Task { @MainActor [weak self] in
+                await self?.runPostRecordingPipeline(meeting: meeting, audioURL: audioURL)
+            }
+        } else {
+            currentMeeting?.status = "done"
+            currentMeeting = nil
+            committedText = ""
+        }
+    }
+
+    // MARK: - ElevenLabs (Realtime) Setup
+
+    private func setupElevenLabsCallbacks() {
+        // Stream raw PCM to ElevenLabs (base64-encoded internally)
+        audioCaptureService.onRawPCMReady = { [weak self] pcmData in
+            self?.elevenLabsService.sendAudio(pcmData)
+        }
+
+        // Don't use WAV chunk callback in streaming mode
+        audioCaptureService.onAudioChunkReady = nil
+
+        // Receive transcripts from ElevenLabs
+        elevenLabsService.onTranscript = { [weak self] result in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.handleElevenLabsResult(result)
+            }
+        }
+
+        elevenLabsService.onError = { [weak self] error in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.recordingError = "ElevenLabs: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @MainActor
+    private func handleElevenLabsResult(_ result: ElevenLabsStreamingService.TranscriptResult) {
+        guard let meeting = currentMeeting else { return }
+
+        let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        if !result.isFinal {
+            currentPartial = text
+            return
+        }
+
+        // Final result — commit
+        currentPartial = ""
+
+        if !committedText.isEmpty {
+            committedText += "\n"
+        }
+        committedText += text
+        meeting.rawTranscript = committedText
+
+        // No speaker diarization in realtime mode — append as single segment
+        let startTime = result.words.first?.start ?? 0
+        let endTime = result.words.last?.end ?? startTime
+
+        if let lastSegment = meeting.segments.last, lastSegment.source == "microphone", lastSegment.speaker == nil {
+            lastSegment.text += "\n" + text
+            lastSegment.endTime = endTime
+        } else {
+            let segment = TranscriptSegment(
+                text: text,
+                startTime: startTime,
+                endTime: endTime,
+                source: "microphone"
+            )
+            meeting.segments.append(segment)
+        }
+    }
+
+    // MARK: - Post-Recording Pipeline (Batch Diarization + LLM)
+
+    @MainActor
+    private func runPostRecordingPipeline(meeting: Meeting, audioURL: URL) async {
+        isProcessingBatch = true
+
+        // Step 1: Batch transcription with speaker diarization
+        batchProcessingStatus = "Analyzing speakers..."
+        do {
+            let result = try await elevenLabsBatchService.transcribe(audioFileURL: audioURL)
+
+            // Replace realtime segments with diarized version
+            meeting.segments.removeAll()
+            for utterance in result.utterances {
+                let segment = TranscriptSegment(
+                    text: utterance.text,
+                    startTime: utterance.start,
+                    endTime: utterance.end,
+                    source: "microphone",
+                    speaker: parseSpeakerIndex(utterance.speakerId)
+                )
+                meeting.segments.append(segment)
+            }
+            meeting.rawTranscript = result.text
+            committedText = result.text
+        } catch {
+            // Keep realtime transcript on batch failure
+            print("Batch transcription failed: \(error.localizedDescription)")
+        }
+
+        // Step 2: LLM transcript correction
+        if !AppSettings.claudeKey.isEmpty {
+            batchProcessingStatus = "Polishing transcript..."
+            do {
+                let corrected = try await ClaudeService.shared.correctTranscript(
+                    rawTranscript: meeting.rawTranscript
+                )
+                meeting.rawTranscript = corrected
+                committedText = corrected
+            } catch {
+                // Keep uncorrected transcript on LLM failure
+                print("LLM correction failed: \(error.localizedDescription)")
+            }
+        }
+
+        // Clean up saved audio file
+        try? FileManager.default.removeItem(at: audioURL)
+
+        meeting.status = "done"
+        isProcessingBatch = false
+        batchProcessingStatus = ""
+        currentMeeting = nil
+        committedText = ""
+    }
+
+    private func parseSpeakerIndex(_ speakerId: String) -> Int {
+        // ElevenLabs returns "speaker_0", "speaker_1", etc.
+        if let lastComponent = speakerId.split(separator: "_").last,
+           let index = Int(lastComponent) {
+            return index
+        }
+        return 0
     }
 
     // MARK: - Deepgram (Cloud) Setup
