@@ -37,6 +37,16 @@ struct NotepadBottomBar: View {
                     .lineLimit(2)
             }
 
+            if coordinator.isProcessingBatch {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text(coordinator.batchProcessingStatus)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             VStack(spacing: 10) {
                 if askFocused {
                     receiptsRow
@@ -128,6 +138,7 @@ struct NotepadBottomBar: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(coordinator.isRecording ? AppTheme.primary : AppTheme.textSecondary)
             }
+            .disabled(coordinator.isProcessingBatch)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
