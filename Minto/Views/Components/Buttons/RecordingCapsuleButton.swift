@@ -22,7 +22,10 @@ struct RecordingCapsuleButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            Haptic.impact(.medium)
+            action()
+        } label: {
             HStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
