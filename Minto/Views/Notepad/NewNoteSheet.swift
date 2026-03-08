@@ -65,7 +65,7 @@ struct NewNoteSheet: View {
             while !Task.isCancelled {
                 do {
                     try await Task.sleep(for: .seconds(1))
-                    elapsedSeconds += 1
+                    elapsedSeconds = Int(coordinator.totalElapsedSeconds)
                 } catch {
                     break
                 }
@@ -85,12 +85,24 @@ struct NewNoteSheet: View {
 private extension NewNoteSheet {
     var sheetToolbar: some View {
         HStack {
+            Button {
+                Haptic.impact(.light)
+                cancelNote()
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
             Spacer()
 
-            Button { dismiss() } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 20))
-                    .foregroundStyle(AppTheme.textSecondary)
+            Button {
+                Haptic.impact(.light)
+                endRecording()
+            } label: {
+                Text("Done")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(AppTheme.primary)
             }
         }
         .padding(.horizontal, 20)
@@ -219,7 +231,8 @@ private extension NewNoteSheet {
 
     func pauseRecording() {
         Task {
-            await coordinator.stopRecording()
+            await coordinator.pauseRecording()
+            elapsedSeconds = Int(coordinator.totalElapsedSeconds)
             recordingPhase = .paused
         }
     }
@@ -236,6 +249,15 @@ private extension NewNoteSheet {
     func endRecording() {
         Task {
             await coordinator.stopRecording()
+            dismiss()
+        }
+    }
+
+    func cancelNote() {
+        Task {
+            await coordinator.stopRecording()
+            modelContext.delete(meeting)
+            try? modelContext.save()
             dismiss()
         }
     }
