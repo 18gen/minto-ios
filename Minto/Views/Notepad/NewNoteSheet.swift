@@ -71,6 +71,12 @@ struct NewNoteSheet: View {
                 }
             }
         }
+        .task {
+            // Auto-start recording if enabled in settings
+            if AppSettings.shared.autoRecord, recordingPhase == .idle {
+                startRecording()
+            }
+        }
     }
 }
 
@@ -127,9 +133,17 @@ private extension NewNoteSheet {
     }
 
     var idleBar: some View {
-        RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
-            Haptic.impact(.medium)
-            startRecording()
+        HStack {
+            RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
+                Haptic.impact(.medium)
+                startRecording()
+            }
+            if isEditing {
+                RecordingCapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
+                    Haptic.impact(.medium)
+                    isEditing = false
+                }
+            }
         }
     }
 
