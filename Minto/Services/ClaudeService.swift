@@ -71,6 +71,27 @@ actor ClaudeService {
         return try await sendRequest(systemPrompt: systemPrompt, userMessage: context)
     }
 
+    func correctTranscript(rawTranscript: String) async throws -> String {
+        let systemPrompt = """
+        あなたは日本語の文字起こし校正アシスタントです。
+        音声認識で生成された文字起こしテキストを校正してください。
+
+        修正すべき点：
+        - 漢字の誤変換（文脈から正しい漢字を推測）
+        - 句読点の追加・修正
+        - 英語の技術用語がカタカナ/ひらがなに誤変換されている場合は英語に戻す
+        - 明らかな聞き間違いの修正
+
+        変更しない点：
+        - 話者の口調や文体
+        - 文の意味や内容
+        - 話者ラベル（Speaker 0, Speaker 1 等）
+
+        校正後のテキストのみを出力してください。説明は不要です。
+        """
+        return try await sendRequest(systemPrompt: systemPrompt, userMessage: rawTranscript)
+    }
+
     // MARK: - Private
 
     private func sendRequest(systemPrompt: String, userMessage: String) async throws -> String {
