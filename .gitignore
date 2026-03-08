@@ -20,6 +20,7 @@ Packages/
 # CocoaPods
 Pods/
 
-# Keys
+# Keys / Secrets
 *.key
 *.pem
+*.xcscheme
