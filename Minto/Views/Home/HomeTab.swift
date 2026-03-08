@@ -32,7 +32,7 @@ struct HomeTab: View {
 
                 floatingBar
             }
-            .background(AppTheme.background)
+            .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Minto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -50,16 +50,10 @@ struct HomeTab: View {
             .navigationDestination(for: Meeting.self) { meeting in
                 NotepadView(meeting: meeting)
             }
-            .task { await vm.onAppear() }
-            .sheet(isPresented: $vm.showAskResult) {
-                ScrollView {
-                    Text(vm.askAnswer)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                }
-                .presentationDetents([.medium, .large])
+            .navigationDestination(for: ChatDestination.self) { dest in
+                AIChatView(initialPrompt: dest.initialPrompt, meetingsContext: dest.meetingsContext)
             }
+            .task { await vm.onAppear() }
             .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
                 if let meeting = sheetMeeting {
                     NewNoteSheet(meeting: meeting)
@@ -74,6 +68,15 @@ struct HomeTab: View {
         try? modelContext.save()
         sheetMeeting = meeting
         showNewNoteSheet = true
+    }
+
+    private func navigateToChat(prompt: String) {
+        let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let context = HomeViewModel.recentContext(from: meetings)
+        vm.askText = ""
+        askFocused = false
+        navigationPath.append(ChatDestination(initialPrompt: text, meetingsContext: context))
     }
 
     private func handleSheetDismiss() {
@@ -98,46 +101,57 @@ struct HomeTab: View {
 
 private extension HomeTab {
     var floatingBar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if askFocused {
-                quickPromptsTray
-                    .transition(
-                        .asymmetric(
-                            insertion: .push(from: .bottom).combined(with: .opacity),
-                            removal: .push(from: .top).combined(with: .opacity)
-                        )
-                    )
-            }
+        VStack(spacing: 0) {
+            // Gradient fade — no background behind this, so .clear shows List content
+            LinearGradient(
+                colors: [.clear, AppTheme.background],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: 20)
+            .allowsHitTesting(false)
 
-            HStack(spacing: 10) {
-                AskBar(
-                    text: $vm.askText,
-                    isAsking: $vm.isAsking,
-                    focus: $askFocused,
-                    placeholder: "Ask anything",
-                    onSend: { Task { await vm.ask(meetings: meetings, prompt: vm.askText) } }
-                )
-
-                if !askFocused {
-                    Button { createQuickNote() } label: {
-                        Image(systemName: "square.and.pencil")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(Color.white)
-                            .frame(width: 44, height: 44)
-                            .background(Circle().fill(AppTheme.accent))
-                            .overlay(
-                                Circle()
-                                    .stroke(AppTheme.surfaceStroke, lineWidth: 1)
-                                    .blendMode(.overlay)
+            // Bar content — opaque background
+            VStack(alignment: .leading, spacing: 0) {
+                if askFocused {
+                    quickPromptsTray
+                        .transition(
+                            .asymmetric(
+                                insertion: .push(from: .bottom).combined(with: .opacity),
+                                removal: .push(from: .top).combined(with: .opacity)
                             )
+                        )
+                }
+
+                HStack(spacing: 10) {
+                    AskBar(
+                        text: $vm.askText,
+                        isAsking: $vm.isAsking,
+                        focus: $askFocused,
+                        placeholder: "Ask anything",
+                        onSend: { navigateToChat(prompt: vm.askText) }
+                    )
+
+                    if !askFocused {
+                        Button { createQuickNote() } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(Color.white)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(AppTheme.accent))
+                                .overlay(
+                                    Circle()
+                                        .stroke(AppTheme.surfaceStroke, lineWidth: 1)
+                                        .blendMode(.overlay)
+                                )
+                        }
+                        .transition(.scale.combined(with: .opacity))
                     }
-                    .transition(.scale.combined(with: .opacity))
                 }
             }
+            .padding(.bottom, 10)
+            .padding(.horizontal, 16)
+            .background(AppTheme.background)
         }
-        .padding(.bottom, 10)
-        .padding(.horizontal, 16)
-        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 0)
         .ignoresSafeArea(.keyboard)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
     }
@@ -147,12 +161,11 @@ private extension HomeTab {
             HStack(spacing: 8) {
                 ForEach(HomeViewModel.quickPrompts.prefix(3)) { p in
                     QuickPromptPill(prompt: p) {
-                        Task { await vm.runQuickPrompt(meetings: meetings, prompt: p) }
+                        navigateToChat(prompt: p.prompt)
                     }
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.top, 10)
             .padding(.bottom, 5)
         }
     }

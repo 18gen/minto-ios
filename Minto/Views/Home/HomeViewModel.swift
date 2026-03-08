@@ -5,10 +5,6 @@ import Combine
 final class HomeViewModel: ObservableObject {
     @Published var askText = ""
     @Published var isAsking = false
-    @Published var askAnswer = ""
-    @Published var showAskResult = false
-
-    let claudeService = ClaudeService.shared
 
     static let quickPrompts: [QuickPrompt] = [
         .init(label: "List recent todos", icon: "pencil", prompt: "Please list all action items and todos from these recent meetings"),
@@ -17,34 +13,6 @@ final class HomeViewModel: ObservableObject {
     ]
 
     func onAppear() async {}
-
-    func ask(meetings: [Meeting], prompt: String) async {
-        let q = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return }
-
-        isAsking = true
-        defer { isAsking = false }
-
-        let context = Self.recentContext(from: meetings)
-
-        do {
-            askAnswer = try await claudeService.askQuestion(
-                question: q,
-                userNotes: context,
-                transcript: ""
-            )
-        } catch {
-            askAnswer = "Error: \(error.localizedDescription)"
-        }
-
-        showAskResult = true
-    }
-
-    func runQuickPrompt(meetings: [Meeting], prompt: QuickPrompt) async {
-        askText = prompt.label
-        await ask(meetings: meetings, prompt: prompt.prompt)
-        askText = ""
-    }
 
     static func recentContext(from meetings: [Meeting], limit: Int = 5) -> String {
         meetings.prefix(limit).map {

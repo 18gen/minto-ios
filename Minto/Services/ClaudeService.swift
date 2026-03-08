@@ -92,6 +92,44 @@ actor ClaudeService {
         return try await sendRequest(systemPrompt: systemPrompt, userMessage: rawTranscript)
     }
 
+    func chat(systemPrompt: String, messages: [[String: String]]) async throws -> String {
+        let apiKey = AppSettings.claudeKey
+        guard !apiKey.isEmpty else { throw ClaudeError.noAPIKey }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 4096,
+            "system": systemPrompt,
+            "messages": messages
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ClaudeError.httpError(0, "Invalid response")
+        }
+        guard httpResponse.statusCode == 200 else {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw ClaudeError.httpError(httpResponse.statusCode, errorBody)
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let content = json?["content"] as? [[String: Any]],
+              let firstBlock = content.first,
+              let text = firstBlock["text"] as? String else {
+            throw ClaudeError.noContent
+        }
+        return text
+    }
+
     // MARK: - Private
 
     private func sendRequest(systemPrompt: String, userMessage: String) async throws -> String {

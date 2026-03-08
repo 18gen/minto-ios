@@ -14,8 +14,8 @@ enum AppTheme {
     static let pausedDots = Color(white: 0.45)
 
     // surfaces
-    static let surfaceFill = Color(white: 0.17)
-    static let inputFill = Color(white: 0.17)
+    static let surfaceFill = Color(white: 0.15)
+    static let inputFill = Color(white: 0.15)
     static let surfaceStroke = Color.white.opacity(0.10)
     static let surfaceStrokeStrong = Color.white.opacity(0.16)
 
