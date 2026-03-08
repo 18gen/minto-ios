@@ -3,7 +3,7 @@ import Foundation
 
 struct RecordingAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
-        var elapsedSeconds: Int
+        var startDate: Date
         var isPaused: Bool
     }
 

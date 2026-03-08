@@ -1,23 +1,30 @@
 import ActivityKit
-import WidgetKit
 import SwiftUI
+import WidgetKit
+
+private let mintColor = Color(red: 0.243, green: 0.706, blue: 0.537) // #3EB489
 
 struct MintoLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RecordingAttributes.self) { context in
-            // Lock Screen / StandBy banner
             lockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
                 // Expanded
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.red)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(context.state.isPaused ? .orange : mintColor)
+                            .frame(width: 7, height: 7)
+                        Text(context.state.isPaused ? "Paused" : "REC")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(context.state.isPaused ? .orange : mintColor)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(formatTime(context.state.elapsedSeconds))
-                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                    timerText(startDate: context.state.startDate)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -26,31 +33,33 @@ struct MintoLiveActivityWidget: Widget {
                         .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 16) {
-                        if context.state.isPaused {
-                            Label("Paused", systemImage: "pause.fill")
-                                .font(.caption2.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Label("Recording", systemImage: "circle.fill")
-                                .font(.caption2.weight(.medium))
-                                .foregroundStyle(.red)
-                        }
+                    HStack(spacing: 6) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 11))
+                        Text("Minto")
+                            .font(.system(size: 11, weight: .medium))
                     }
-                    .padding(.top, 4)
+                    .foregroundStyle(mintColor.opacity(0.7))
+                    .padding(.top, 2)
                 }
             } compactLeading: {
-                Image(systemName: context.state.isPaused ? "pause.circle.fill" : "record.circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(context.state.isPaused ? .orange : .red)
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(context.state.isPaused ? .orange : mintColor)
+                        .frame(width: 6, height: 6)
+                    Image(systemName: "waveform")
+                        .font(.system(size: 11))
+                        .foregroundStyle(mintColor)
+                }
             } compactTrailing: {
-                Text(formatTime(context.state.elapsedSeconds))
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                timerText(startDate: context.state.startDate)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
             } minimal: {
                 Image(systemName: "waveform")
                     .font(.system(size: 12))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(mintColor)
             }
         }
     }
@@ -58,36 +67,57 @@ struct MintoLiveActivityWidget: Widget {
     // MARK: - Lock Screen
 
     private func lockScreenView(context: ActivityViewContext<RecordingAttributes>) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: context.state.isPaused ? "pause.circle.fill" : "record.circle")
-                .font(.system(size: 24))
-                .foregroundStyle(context.state.isPaused ? .orange : .red)
+        VStack(alignment: .leading, spacing: 12) {
+            // Top row: icon + title
+            HStack(spacing: 8) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 13))
+                    .foregroundStyle(mintColor)
 
-            VStack(alignment: .leading, spacing: 2) {
                 Text(context.attributes.meetingTitle)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
 
-                Text(context.state.isPaused ? "Paused" : "Recording")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Spacer()
             }
 
-            Spacer()
+            // Center: large timer
+            timerText(startDate: context.state.startDate)
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
 
-            Text(formatTime(context.state.elapsedSeconds))
-                .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.primary)
+            // Mint divider
+            RoundedRectangle(cornerRadius: 1)
+                .fill(mintColor.opacity(0.35))
+                .frame(height: 2)
+
+            // Bottom row: status + branding
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(context.state.isPaused ? .orange : mintColor)
+                    .frame(width: 6, height: 6)
+
+                Text(context.state.isPaused ? "Paused" : "Recording")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Spacer()
+
+                Text("Minto")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(mintColor.opacity(0.5))
+            }
         }
-        .padding(16)
-        .activityBackgroundTint(.black.opacity(0.7))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .activityBackgroundTint(.black.opacity(0.85))
     }
 
     // MARK: - Helpers
 
-    private func formatTime(_ totalSeconds: Int) -> String {
-        let m = totalSeconds / 60
-        let s = totalSeconds % 60
-        return String(format: "%02d:%02d", m, s)
+    private func timerText(startDate: Date) -> Text {
+        Text(timerInterval: startDate...startDate.addingTimeInterval(36000), countsDown: false)
     }
 }

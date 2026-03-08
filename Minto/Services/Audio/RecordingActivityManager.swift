@@ -8,11 +8,11 @@ final class RecordingActivityManager {
 
     private init() {}
 
-    func startActivity(title: String) {
+    func startActivity(title: String, startDate: Date) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let attributes = RecordingAttributes(meetingTitle: title.isEmpty ? "Recording" : title)
-        let state = RecordingAttributes.ContentState(elapsedSeconds: 0, isPaused: false)
+        let state = RecordingAttributes.ContentState(startDate: startDate, isPaused: false)
         let content = ActivityContent(state: state, staleDate: nil)
 
         do {
@@ -26,11 +26,11 @@ final class RecordingActivityManager {
         }
     }
 
-    func updateActivity(elapsedSeconds: Int, isPaused: Bool) {
+    func updateActivity(isPaused: Bool, startDate: Date) {
         guard let activity = currentActivity else { return }
 
         let state = RecordingAttributes.ContentState(
-            elapsedSeconds: elapsedSeconds,
+            startDate: startDate,
             isPaused: isPaused
         )
         let content = ActivityContent(state: state, staleDate: nil)
@@ -44,7 +44,7 @@ final class RecordingActivityManager {
         guard let activity = currentActivity else { return }
 
         let finalState = RecordingAttributes.ContentState(
-            elapsedSeconds: 0,
+            startDate: .now,
             isPaused: false
         )
         let content = ActivityContent(state: finalState, staleDate: nil)

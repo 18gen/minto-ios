@@ -36,7 +36,6 @@ final class iOSRecordingCoordinator {
     private var recordingStartDate: Date = .now
     private var levelPollTimer: Timer?
     private let activityManager = RecordingActivityManager.shared
-    private var lastActivityUpdateSecond: Int = -1
     private var activeMode: TranscriptionMode = .elevenLabs
 
     private let backgroundLock = NSLock()
@@ -126,8 +125,7 @@ final class iOSRecordingCoordinator {
 
             try await audioCaptureService.startCapture()
             isRecording = true
-            lastActivityUpdateSecond = -1
-            activityManager.startActivity(title: meeting.title)
+            activityManager.startActivity(title: meeting.title, startDate: recordingStartDate)
 
             startLevelPollTimer()
 
@@ -201,13 +199,6 @@ final class iOSRecordingCoordinator {
                 self.currentAudioLevel = self.audioCaptureService.currentAudioLevel
                 if self.recordingError != nil, self.audioCaptureService.hasReceivedNonSilence {
                     self.recordingError = nil
-                }
-
-                // Update Live Activity once per second
-                let elapsed = Int(Date.now.timeIntervalSince(self.recordingStartDate))
-                if elapsed != self.lastActivityUpdateSecond {
-                    self.lastActivityUpdateSecond = elapsed
-                    self.activityManager.updateActivity(elapsedSeconds: elapsed, isPaused: false)
                 }
             }
         }
