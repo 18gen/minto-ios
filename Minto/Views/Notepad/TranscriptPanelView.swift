@@ -7,17 +7,8 @@ struct TranscriptPanelView: View {
     private let coordinator = iOSRecordingCoordinator.shared
     @Environment(\.dismiss) private var dismiss
 
-    /// User-assigned speaker names, keyed by speaker index.
-    @State private var speakerNames: [Int: String] = [:]
     @State private var editingSpeaker: Int?
-
-    // Speaker colors for diarization
-    private static let speakerColors: [Color] = [
-        AppTheme.accent,
-        Color(red: 0.65, green: 0.45, blue: 0.70), // purple
-        Color(red: 0.45, green: 0.65, blue: 0.50), // green
-        Color(red: 0.70, green: 0.55, blue: 0.40), // orange
-    ]
+    @State private var editingSpeakerName: String = ""
 
     var body: some View {
         if isInline {
@@ -50,24 +41,10 @@ struct TranscriptPanelView: View {
 
             transcriptScrollView
         }
-        .alert("Rename Speaker", isPresented: .init(
-            get: { editingSpeaker != nil },
-            set: { if !$0 { editingSpeaker = nil } }
-        )) {
-            if let speaker = editingSpeaker {
-                TextField("Name", text: .init(
-                    get: { speakerNames[speaker] ?? "" },
-                    set: { speakerNames[speaker] = $0 }
-                ))
-                Button("OK") { editingSpeaker = nil }
-                Button("Cancel", role: .cancel) { editingSpeaker = nil }
-            }
-        } message: {
-            Text("Enter a name for this speaker")
-        }
+        .renameAlert(editingSpeaker: $editingSpeaker, editingSpeakerName: $editingSpeakerName, meeting: meeting)
     }
 
-    // MARK: - Sheet mode (existing behavior)
+    // MARK: - Sheet mode
 
     private var sheetBody: some View {
         NavigationStack {
@@ -89,21 +66,7 @@ struct TranscriptPanelView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .alert("Rename Speaker", isPresented: .init(
-                get: { editingSpeaker != nil },
-                set: { if !$0 { editingSpeaker = nil } }
-            )) {
-                if let speaker = editingSpeaker {
-                    TextField("Name", text: .init(
-                        get: { speakerNames[speaker] ?? "" },
-                        set: { speakerNames[speaker] = $0 }
-                    ))
-                    Button("OK") { editingSpeaker = nil }
-                    Button("Cancel", role: .cancel) { editingSpeaker = nil }
-                }
-            } message: {
-                Text("Enter a name for this speaker")
-            }
+            .renameAlert(editingSpeaker: $editingSpeaker, editingSpeakerName: $editingSpeakerName, meeting: meeting)
         }
         .presentationDetents([.medium, .large])
     }
@@ -137,9 +100,8 @@ struct TranscriptPanelView: View {
                             TranscriptBubble(
                                 text: segment.text,
                                 isPartial: false,
-                                source: segment.source ?? "system",
-                                speaker: segment.speaker,
-                                speakerColor: colorForSpeaker(segment.speaker)
+                                isUserSpeaker: segment.isUserSpeaker == true,
+                                speakerColor: colorForSegment(segment)
                             )
                             .id(segment.id)
                         }
@@ -148,8 +110,7 @@ struct TranscriptPanelView: View {
                             TranscriptBubble(
                                 text: coordinator.currentPartial,
                                 isPartial: true,
-                                source: "microphone",
-                                speaker: nil,
+                                isUserSpeaker: false,
                                 speakerColor: nil
                             )
                             .id("partial")
@@ -188,24 +149,62 @@ struct TranscriptPanelView: View {
 
     @ViewBuilder
     private func speakerHeader(segment: TranscriptSegment, index: Int) -> some View {
+        let isUser = segment.isUserSpeaker == true
+        let name = displayName(for: segment)
+        let color = colorForSegment(segment)
+
         HStack(spacing: 6) {
             Text(formatTime(segment.startTime))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
-            if let speaker = segment.speaker {
-                Button {
-                    editingSpeaker = speaker
-                } label: {
-                    Text(displayName(for: speaker))
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(colorForSpeaker(speaker) ?? AppTheme.accent)
-                }
+            if segment.speaker != nil {
+                // Avatar circle
+                Text(String(name.prefix(1)).uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(color))
+
+                Text(name)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(color)
             }
 
             Spacer()
         }
         .padding(.top, index == 0 ? 8 : 4)
+        .contentShape(Rectangle())
+        .contextMenu {
+            if let speaker = segment.speaker {
+                Button {
+                    editingSpeakerName = meeting.speakerNames[speaker] ?? ""
+                    editingSpeaker = speaker
+                } label: {
+                    Label("Rename Speaker", systemImage: "pencil")
+                }
+
+                if !isUser {
+                    Button {
+                        meeting.markSpeakerAsUser(speaker)
+                        Haptic.notification(.success)
+                    } label: {
+                        Label("Mark as Me", systemImage: "person.crop.circle.badge.checkmark")
+                    }
+                } else {
+                    Button(role: .destructive) {
+                        meeting.userSpeakerIndex = nil
+                        for seg in meeting.segments where seg.speaker == speaker {
+                            seg.isUserSpeaker = false
+                            if seg.speakerLabel == "You" { seg.speakerLabel = nil }
+                        }
+                        Haptic.notification(.success)
+                    } label: {
+                        Label("Unmark as Me", systemImage: "person.crop.circle.badge.minus")
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Helpers
@@ -214,20 +213,22 @@ struct TranscriptPanelView: View {
         if index == 0 { return true }
         let prev = segments[index - 1]
         let curr = segments[index]
-        // Show header on speaker change or source change
         return prev.speaker != curr.speaker || prev.source != curr.source
     }
 
-    private func displayName(for speaker: Int) -> String {
-        if let name = speakerNames[speaker], !name.isEmpty {
+    private func displayName(for segment: TranscriptSegment) -> String {
+        if let label = segment.speakerLabel, !label.isEmpty { return label }
+        if let speaker = segment.speaker, let name = meeting.speakerNames[speaker], !name.isEmpty {
             return name
         }
-        return "Speaker \(speaker + 1)"
+        if let speaker = segment.speaker { return "Speaker \(speaker + 1)" }
+        return "Unknown"
     }
 
-    private func colorForSpeaker(_ speaker: Int?) -> Color? {
-        guard let speaker else { return nil }
-        return Self.speakerColors[speaker % Self.speakerColors.count]
+    private func colorForSegment(_ segment: TranscriptSegment) -> Color {
+        if segment.isUserSpeaker == true { return AppTheme.userSpeakerColor }
+        guard let speaker = segment.speaker else { return AppTheme.accent }
+        return AppTheme.speakerColors[speaker % AppTheme.speakerColors.count]
     }
 
     private func formatTime(_ seconds: Double) -> String {
@@ -237,33 +238,63 @@ struct TranscriptPanelView: View {
     }
 }
 
+// MARK: - Rename Alert Modifier
+
+private struct RenameAlertModifier: ViewModifier {
+    @Binding var editingSpeaker: Int?
+    @Binding var editingSpeakerName: String
+    let meeting: Meeting
+
+    func body(content: Content) -> some View {
+        content.alert("Rename Speaker", isPresented: .init(
+            get: { editingSpeaker != nil },
+            set: { if !$0 { editingSpeaker = nil } }
+        )) {
+            TextField("Name", text: $editingSpeakerName)
+            Button("OK") {
+                if let speaker = editingSpeaker {
+                    meeting.renameSpeaker(speaker, to: editingSpeakerName)
+                }
+                editingSpeaker = nil
+            }
+            Button("Cancel", role: .cancel) { editingSpeaker = nil }
+        } message: {
+            Text("Enter a name for this speaker")
+        }
+    }
+}
+
+private extension View {
+    func renameAlert(editingSpeaker: Binding<Int?>, editingSpeakerName: Binding<String>, meeting: Meeting) -> some View {
+        modifier(RenameAlertModifier(editingSpeaker: editingSpeaker, editingSpeakerName: editingSpeakerName, meeting: meeting))
+    }
+}
+
+// MARK: - Transcript Bubble
+
 private struct TranscriptBubble: View {
     let text: String
     let isPartial: Bool
-    var source: String = "system"
-    var speaker: Int?
+    var isUserSpeaker: Bool = false
     var speakerColor: Color?
 
-    private var isSystem: Bool { source == "system" }
+    private var alignRight: Bool { isUserSpeaker }
 
     private var bubbleColor: Color {
         if isPartial { return Color.secondary.opacity(0.06) }
-        if let speakerColor {
-            return speakerColor.opacity(0.10)
-        }
+        if isUserSpeaker { return AppTheme.userSpeakerColor.opacity(0.12) }
+        if let speakerColor { return speakerColor.opacity(0.10) }
         return AppTheme.accent.opacity(0.10)
     }
 
     private var leadingAccent: Color? {
-        if isPartial || isSystem { return nil }
+        if isPartial || isUserSpeaker { return nil }
         return speakerColor
     }
 
     var body: some View {
         HStack {
-            if !isSystem {
-                Spacer(minLength: 40)
-            }
+            if alignRight { Spacer(minLength: 40) }
             HStack(spacing: 0) {
                 if let accent = leadingAccent {
                     RoundedRectangle(cornerRadius: 1.5)
@@ -280,9 +311,7 @@ private struct TranscriptBubble: View {
             }
             .background(bubbleColor)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            if isSystem {
-                Spacer(minLength: 40)
-            }
+            if !alignRight { Spacer(minLength: 40) }
         }
     }
 }

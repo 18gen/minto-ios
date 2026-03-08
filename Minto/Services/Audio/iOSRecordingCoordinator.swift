@@ -422,13 +422,22 @@ final class iOSRecordingCoordinator {
 
             // Replace realtime segments with diarized version
             meeting.segments.removeAll()
+            let existingNames = meeting.speakerNames
+            let userIdx = meeting.userSpeakerIndex
+
             for utterance in result.utterances {
+                let idx = parseSpeakerIndex(utterance.speakerId)
+                let isUser = (idx == userIdx)
+                let label: String? = isUser ? "You" : existingNames[idx]
+
                 let segment = TranscriptSegment(
                     text: utterance.text,
                     startTime: utterance.start,
                     endTime: utterance.end,
                     source: "microphone",
-                    speaker: parseSpeakerIndex(utterance.speakerId)
+                    speaker: idx,
+                    speakerLabel: label,
+                    isUserSpeaker: isUser
                 )
                 meeting.segments.append(segment)
             }
@@ -548,12 +557,16 @@ final class iOSRecordingCoordinator {
                 lastSegment.text += runText
                 lastSegment.endTime = endTime
             } else {
+                let isUser = (run.speaker == meeting.userSpeakerIndex)
+                let label: String? = isUser ? "You" : meeting.speakerNames[run.speaker]
                 let segment = TranscriptSegment(
                     text: runText,
                     startTime: startTime,
                     endTime: endTime,
                     source: "microphone",
-                    speaker: run.speaker
+                    speaker: run.speaker,
+                    speakerLabel: label,
+                    isUserSpeaker: isUser
                 )
                 meeting.segments.append(segment)
             }

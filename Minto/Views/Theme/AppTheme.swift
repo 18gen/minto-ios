@@ -13,6 +13,19 @@ enum AppTheme {
     static let recordingGreen = Color(red: 0.65, green: 0.80, blue: 0.30)
     static let pausedDots = Color(white: 0.45)
 
+    // speaker diarization
+    static let speakerColors: [Color] = [
+        Color(red: 0.45, green: 0.65, blue: 0.50), // sage
+        Color(red: 0.65, green: 0.45, blue: 0.70), // purple
+        Color(red: 0.70, green: 0.55, blue: 0.40), // warm orange
+        Color(red: 0.40, green: 0.55, blue: 0.75), // steel blue
+        Color(red: 0.75, green: 0.45, blue: 0.50), // rose
+        Color(red: 0.55, green: 0.65, blue: 0.40), // olive
+        Color(red: 0.65, green: 0.50, blue: 0.60), // mauve
+        Color(red: 0.50, green: 0.60, blue: 0.65), // slate teal
+    ]
+    static let userSpeakerColor: Color = accent
+
     // surfaces
     static let surfaceFill = Color(white: 0.15)
     static let inputFill = Color(white: 0.15)

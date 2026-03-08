@@ -14,6 +14,12 @@ final class Meeting {
     var toneMode: String
     var status: String
 
+    /// JSON-encoded [String: String] mapping speaker index → display name.
+    var speakerNamesData: Data?
+
+    /// The speaker index the user has marked as "me", or nil if unset.
+    var userSpeakerIndex: Int?
+
     @Relationship(deleteRule: .cascade, inverse: \TranscriptSegment.meeting)
     var segments: [TranscriptSegment]
 
@@ -30,6 +36,55 @@ final class Meeting {
         self.augmentedNotes = ""
         self.toneMode = toneMode
         self.status = "idle"
+        self.speakerNamesData = nil
+        self.userSpeakerIndex = nil
         self.segments = []
+    }
+
+    // MARK: - Speaker Name Helpers
+
+    var speakerNames: [Int: String] {
+        get {
+            guard let data = speakerNamesData,
+                  let dict = try? JSONDecoder().decode([String: String].self, from: data)
+            else { return [:] }
+            var result: [Int: String] = [:]
+            for (key, value) in dict {
+                if let intKey = Int(key) { result[intKey] = value }
+            }
+            return result
+        }
+        set {
+            let stringKeyDict = Dictionary(uniqueKeysWithValues: newValue.map { (String($0.key), $0.value) })
+            speakerNamesData = try? JSONEncoder().encode(stringKeyDict)
+        }
+    }
+
+    func markSpeakerAsUser(_ speakerIndex: Int) {
+        // Clear previous designation
+        if let prev = userSpeakerIndex {
+            for segment in segments where segment.speaker == prev {
+                segment.isUserSpeaker = false
+                if segment.speakerLabel == "You" { segment.speakerLabel = nil }
+            }
+        }
+
+        userSpeakerIndex = speakerIndex
+
+        // Set new designation
+        for segment in segments where segment.speaker == speakerIndex {
+            segment.isUserSpeaker = true
+            segment.speakerLabel = "You"
+        }
+    }
+
+    func renameSpeaker(_ speakerIndex: Int, to name: String) {
+        var names = speakerNames
+        names[speakerIndex] = name
+        speakerNames = names
+
+        for segment in segments where segment.speaker == speakerIndex {
+            segment.speakerLabel = name.isEmpty ? nil : name
+        }
     }
 }
