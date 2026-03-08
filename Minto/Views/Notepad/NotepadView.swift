@@ -80,14 +80,6 @@ private extension NotepadView {
                 Image(systemName: "square.and.arrow.up")
             }
         }
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button {
-                Task { await augment() }
-            } label: {
-                Image(systemName: "wand.and.stars")
-            }
-            .disabled(isGenerateDisabled || isAugmenting)
-        }
     }
 }
 
