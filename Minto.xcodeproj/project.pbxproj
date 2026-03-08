@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F876877A2F5D6D5500F9D8DD /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = F87687792F5D6D5500F9D8DD /* MarkdownUI */; };
 		F8AA000A2F5BA9900030394A /* MintoLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F8AA00012F5BA9900030394A /* MintoLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -80,6 +81,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F876877A2F5D6D5500F9D8DD /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +135,7 @@
 			);
 			name = Minto;
 			packageProductDependencies = (
+				F87687792F5D6D5500F9D8DD /* MarkdownUI */,
 			);
 			productName = Minto;
 			productReference = F85CE8632F5BA9900030394A /* Minto.app */;
@@ -187,6 +190,9 @@
 			);
 			mainGroup = F85CE85A2F5BA9900030394A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F87687782F5D6D5500F9D8DD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F85CE8642F5BA9900030394A /* Products */;
 			projectDirPath = "";
@@ -522,6 +528,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F87687782F5D6D5500F9D8DD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F87687792F5D6D5500F9D8DD /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F87687782F5D6D5500F9D8DD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F85CE85B2F5BA9900030394A /* Project object */;
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import MarkdownUI
 
 struct ChatBubble: View {
     let message: ChatMessage
@@ -28,9 +29,7 @@ struct ChatBubble: View {
                 if message.isLoading {
                     ThinkingIndicator()
                 } else {
-                    Text(message.content)
-                        .font(.system(size: 16))
-                        .foregroundStyle(AppTheme.textPrimary)
+                    Markdown(message.content)
                         .textSelection(.enabled)
                 }
             }
