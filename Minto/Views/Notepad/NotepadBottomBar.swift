@@ -1,12 +1,12 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct NotepadBottomBar: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
 
-    @State private var coordinator = iOSRecordingCoordinator.shared
+    private let coordinator = iOSRecordingCoordinator.shared
 
     @State private var askText = ""
     @State private var askAnswer = ""
@@ -110,7 +110,6 @@ struct NotepadBottomBar: View {
 
     private var recordingCapsule: some View {
         HStack(spacing: 10) {
-
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     currentPage = currentPage == .notes ? .transcript : .notes

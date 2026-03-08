@@ -1,16 +1,10 @@
-//
-//  DateHeaderFormatter.swift
-//  Gijiro
-//
-//  Created by Gen Ichihashi on 2026-02-24.
-//
-
 import Foundation
 
 enum DateHeaderFormatter {
     static let header: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "EEE, MMM d"
+        f.locale = Locale.current
+        f.setLocalizedDateFormatFromTemplate("EEE, MMM d")
         return f
     }()
 

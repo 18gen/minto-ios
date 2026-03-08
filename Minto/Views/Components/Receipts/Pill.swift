@@ -1,10 +1,3 @@
-//
-//  Pill.swift
-//  Gijiro
-//
-//  Created by Gen Ichihashi on 2026-02-25.
-//
-
 import SwiftUI
 
 struct PillButtonStyle: ButtonStyle {
@@ -36,19 +29,19 @@ struct SlashBadge: View {
 
         var fill: Color {
             switch self {
-            case .blue: return AppTheme.primary.opacity(0.22)
-            case .green: return Color.green.opacity(0.22)
-            case .cyan: return Color.cyan.opacity(0.22)
-            case .gray: return Color.primary.opacity(0.10)
+            case .blue: AppTheme.primary.opacity(0.22)
+            case .green: Color.green.opacity(0.22)
+            case .cyan: Color.cyan.opacity(0.22)
+            case .gray: Color.primary.opacity(0.10)
             }
         }
 
         var slash: Color {
             switch self {
-            case .blue: return AppTheme.primary
-            case .green: return .green
-            case .cyan: return .cyan
-            case .gray: return .secondary
+            case .blue: AppTheme.primary
+            case .green: .green
+            case .cyan: .cyan
+            case .gray: .secondary
             }
         }
     }

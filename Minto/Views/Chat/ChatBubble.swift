@@ -1,5 +1,5 @@
-import SwiftUI
 import MarkdownUI
+import SwiftUI
 
 struct ChatBubble: View {
     let message: ChatMessage
@@ -62,7 +62,7 @@ private struct ThinkingIndicator: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            ForEach(0..<3, id: \.self) { index in
+            ForEach(0 ..< 3, id: \.self) { index in
                 Circle()
                     .fill(AppTheme.textSecondary)
                     .frame(width: 8, height: 8)

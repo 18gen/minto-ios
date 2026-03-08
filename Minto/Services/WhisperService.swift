@@ -1,7 +1,7 @@
 import Foundation
 
 actor WhisperService {
-    private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+    private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")! // swiftlint:disable:this force_unwrapping
 
     struct VerboseResult: Decodable, Sendable {
         let text: String
@@ -22,8 +22,8 @@ actor WhisperService {
         var errorDescription: String? {
             switch self {
             case .noAPIKey: "Whisper API key not set"
-            case .httpError(let code, let msg): "HTTP \(code): \(msg)"
-            case .decodingError(let msg): "Decoding error: \(msg)"
+            case let .httpError(code, msg): "HTTP \(code): \(msg)"
+            case let .decodingError(msg): "Decoding error: \(msg)"
             }
         }
     }
@@ -43,7 +43,7 @@ actor WhisperService {
         body.appendMultipart(boundary: boundary, name: "model", value: "whisper-1")
         body.appendMultipart(boundary: boundary, name: "language", value: "ja")
         body.appendMultipart(boundary: boundary, name: "response_format", value: "verbose_json")
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append(Data("--\(boundary)--\r\n".utf8))
         request.httpBody = body
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -67,16 +67,16 @@ actor WhisperService {
 
 private extension Data {
     nonisolated mutating func appendMultipart(boundary: String, name: String, filename: String, mimeType: String, data: Data) {
-        append("--\(boundary)\r\n".data(using: .utf8)!)
-        append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        append(Data("--\(boundary)\r\n".utf8))
+        append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
+        append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
         append(data)
-        append("\r\n".data(using: .utf8)!)
+        append(Data("\r\n".utf8))
     }
 
     nonisolated mutating func appendMultipart(boundary: String, name: String, value: String) {
-        append("--\(boundary)\r\n".data(using: .utf8)!)
-        append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
-        append("\(value)\r\n".data(using: .utf8)!)
+        append(Data("--\(boundary)\r\n".utf8))
+        append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
+        append(Data("\(value)\r\n".utf8))
     }
 }

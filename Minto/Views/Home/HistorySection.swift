@@ -38,11 +38,10 @@ struct HistorySection: View {
 
     private func meetingRow(_ meeting: Meeting) -> some View {
         HStack(spacing: 12) {
-            if hasTranscript(meeting) {
-                IconBadge(icon: "waveform", tint: AppTheme.accent)
-            } else {
-                IconBadge()
-            }
+            IconBadge(
+                icon: hasTranscript(meeting) ? "waveform" : "doc.text",
+                tint: hasTranscript(meeting) ? AppTheme.accent : .secondary
+            )
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(meeting.title.isEmpty ? "New Note" : meeting.title)

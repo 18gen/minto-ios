@@ -1,10 +1,3 @@
-//
-//  ReceiptPill.swift
-//  Gijiro
-//
-//  Created by Gen Ichihashi on 2026-02-25.
-//
-
 import SwiftUI
 
 struct Receipt: Identifiable, Hashable {

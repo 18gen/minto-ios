@@ -1,10 +1,3 @@
-//
-//  GlassSurface.swift
-//  Gijiro
-//
-//  Created by Gen Ichihashi on 2026-02-25.
-//
-
 import SwiftUI
 
 struct GlassSurface: ViewModifier {
@@ -17,9 +10,9 @@ struct GlassSurface: ViewModifier {
             .padding(padding)
             .background {
                 #if os(macOS)
-                VisualEffectBlur(material: .hudWindow, blendingMode: .withinWindow)
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .withinWindow)
                 #else
-                Color(.systemBackground).opacity(0.85)
+                    Color(.systemBackground).opacity(0.85)
                 #endif
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))

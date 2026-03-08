@@ -1,8 +1,3 @@
-//
-//  AskBar.swift
-//  Gijiro
-//
-
 import SwiftUI
 
 struct AskBar<Accessory: View>: View {
@@ -53,7 +48,7 @@ struct AskBar<Accessory: View>: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 17))
                 .focused(focus)
-                .lineLimit(isExpanded ? 1...12 : 1...5)
+                .lineLimit(isExpanded ? 1 ... 12 : 1 ... 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, shouldShowSend ? 30 : 0)
                 .onSubmit(onSend)

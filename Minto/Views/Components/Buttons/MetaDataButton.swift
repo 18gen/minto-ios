@@ -1,10 +1,3 @@
-//
-//  MetaDataButton.swift
-//  Gijiro
-//
-//  Created by Gen Ichihashi on 2026-02-24.
-//
-
 import SwiftUI
 
 struct TightLabelStyle: LabelStyle {

@@ -1,6 +1,6 @@
-import Foundation
-import AVFoundation
 import Accelerate
+import AVFoundation
+import Foundation
 
 final class iOSAudioCaptureService: @unchecked Sendable {
     private let lock = NSLock()
@@ -23,6 +23,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
     /// Fires on every audio tap (~100ms) with raw Int16 PCM bytes for streaming to Deepgram.
     var onRawPCMReady: ((Data) -> Void)?
 
+    // swiftlint:disable:next force_unwrapping - guaranteed valid for standard PCM format
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
 
     private var cachedConverter: AVAudioConverter?
@@ -62,7 +63,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
 
-        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else {
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             throw CaptureError.noMicrophone
         }
 
@@ -79,7 +80,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
                     self.lock.withLock {
                         self._currentAudioLevel = normalizedLevel
-                        if !self._hasReceivedNonSilence && rms > 0.0001 {
+                        if !self._hasReceivedNonSilence, rms > 0.0001 {
                             self._hasReceivedNonSilence = true
                         }
                     }
@@ -189,9 +190,12 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         }
         guard !samples.isEmpty else { return nil }
 
-        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false)!
+        guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false),
+              let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        else {
+            return nil
+        }
 
-        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let audioDir = documentsDir.appendingPathComponent("recordings", isDirectory: true)
         try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
         let fileURL = audioDir.appendingPathComponent("\(UUID().uuidString).wav")
@@ -201,9 +205,10 @@ final class iOSAudioCaptureService: @unchecked Sendable {
                 return nil
             }
             buffer.frameLength = AVAudioFrameCount(samples.count)
-            let dst = buffer.floatChannelData![0]
+            guard let dst = buffer.floatChannelData?[0] else { return nil }
             samples.withUnsafeBufferPointer { src in
-                dst.update(from: src.baseAddress!, count: samples.count)
+                guard let baseAddr = src.baseAddress else { return }
+                dst.update(from: baseAddr, count: samples.count)
             }
 
             let file = try AVAudioFile(forWriting: fileURL, settings: format.settings)
@@ -243,7 +248,9 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
         if rms < silenceThreshold { return nil }
 
-        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false)!
+        guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false) else {
+            return nil
+        }
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
         defer { try? FileManager.default.removeItem(at: tempURL) }
@@ -253,9 +260,10 @@ final class iOSAudioCaptureService: @unchecked Sendable {
                 return nil
             }
             outputBuffer.frameLength = AVAudioFrameCount(samples.count)
-            let dst = outputBuffer.floatChannelData![0]
+            guard let dst = outputBuffer.floatChannelData?[0] else { return nil }
             samples.withUnsafeBufferPointer { src in
-                dst.update(from: src.baseAddress!, count: samples.count)
+                guard let baseAddr = src.baseAddress else { return }
+                dst.update(from: baseAddr, count: samples.count)
             }
 
             let file = try AVAudioFile(forWriting: tempURL, settings: format.settings)
@@ -322,7 +330,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .noMicrophone: return "No microphone available"
+            case .noMicrophone: "No microphone available"
             }
         }
     }

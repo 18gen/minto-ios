@@ -1,10 +1,10 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TranscriptPanelView: View {
     @Bindable var meeting: Meeting
     var isInline: Bool = false
-    @State private var coordinator = iOSRecordingCoordinator.shared
+    private let coordinator = iOSRecordingCoordinator.shared
     @Environment(\.dismiss) private var dismiss
 
     /// User-assigned speaker names, keyed by speaker index.

@@ -25,7 +25,7 @@ struct DateBadge: View {
                     LinearGradient(
                         colors: [
                             Color.white.opacity(0.10),
-                            Color.white.opacity(0.06)
+                            Color.white.opacity(0.06),
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -38,17 +38,25 @@ struct DateBadge: View {
         )
     }
 
+    private static let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM"
+        return f
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "d"
+        return f
+    }()
+
     private var monthAbbreviation: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX") // stable "FEB"
-        formatter.dateFormat = "MMM"
-        return formatter.string(from: date)
+        Self.monthFormatter.string(from: date)
     }
 
     private var dayNumber: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "d"
-        return formatter.string(from: date)
+        Self.dayFormatter.string(from: date)
     }
 }

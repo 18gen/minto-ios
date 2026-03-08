@@ -3,7 +3,6 @@ import Foundation
 /// Post-recording batch transcription via ElevenLabs Scribe v2.
 /// Provides full speaker diarization (up to 48 speakers).
 actor ElevenLabsBatchService {
-
     // MARK: - Types
 
     struct BatchResult: Sendable {
@@ -25,9 +24,9 @@ actor ElevenLabsBatchService {
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: return "ElevenLabs API key not set"
-            case .httpError(let code, let msg): return "HTTP \(code): \(msg)"
-            case .decodingError(let msg): return "Decoding error: \(msg)"
+            case .noAPIKey: "ElevenLabs API key not set"
+            case let .httpError(code, msg): "HTTP \(code): \(msg)"
+            case let .decodingError(msg): "Decoding error: \(msg)"
             }
         }
     }
@@ -41,7 +40,7 @@ actor ElevenLabsBatchService {
         let audioData = try Data(contentsOf: audioFileURL)
 
         let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "https://api.elevenlabs.io/v1/speech-to-text")!)
+        var request = URLRequest(url: URL(string: "https://api.elevenlabs.io/v1/speech-to-text")!) // swiftlint:disable:this force_unwrapping
         request.httpMethod = "POST"
         request.timeoutInterval = 300
         request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
@@ -55,7 +54,7 @@ actor ElevenLabsBatchService {
         body.appendField(boundary: boundary, name: "language_code", value: "ja")
         body.appendField(boundary: boundary, name: "diarize", value: "true")
         body.appendField(boundary: boundary, name: "timestamps_granularity", value: "word")
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append(Data("--\(boundary)--\r\n".utf8))
 
         request.httpBody = body
 
@@ -113,16 +112,16 @@ private struct ResponseUtterance: Decodable {
 
 private extension Data {
     mutating func appendField(boundary: String, name: String, filename: String, mimeType: String, data: Data) {
-        append("--\(boundary)\r\n".data(using: .utf8)!)
-        append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
-        append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        append(Data("--\(boundary)\r\n".utf8))
+        append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
+        append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
         append(data)
-        append("\r\n".data(using: .utf8)!)
+        append(Data("\r\n".utf8))
     }
 
     mutating func appendField(boundary: String, name: String, value: String) {
-        append("--\(boundary)\r\n".data(using: .utf8)!)
-        append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
-        append("\(value)\r\n".data(using: .utf8)!)
+        append(Data("--\(boundary)\r\n".utf8))
+        append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
+        append(Data("\(value)\r\n".utf8))
     }
 }

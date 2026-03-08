@@ -1,5 +1,7 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
+
+private struct SettingsRoute: Hashable {}
 
 struct HomeTab: View {
     @Environment(\.modelContext) private var modelContext
@@ -8,7 +10,6 @@ struct HomeTab: View {
     @StateObject private var vm = HomeViewModel()
     @FocusState private var askFocused: Bool
 
-    @State private var showSettings = false
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
 
@@ -38,13 +39,13 @@ struct HomeTab: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showSettings = true
+                        navigationPath.append(SettingsRoute())
                     } label: {
                         Image(systemName: "gearshape")
                     }
                 }
             }
-            .navigationDestination(isPresented: $showSettings) {
+            .navigationDestination(for: SettingsRoute.self) { _ in
                 SettingsTab()
             }
             .navigationDestination(for: Meeting.self) { meeting in
@@ -90,7 +91,7 @@ struct HomeTab: View {
         }
 
         let titleEmpty = meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if titleEmpty && meeting.userNotes.isEmpty && meeting.rawTranscript.isEmpty {
+        if titleEmpty, meeting.userNotes.isEmpty, meeting.rawTranscript.isEmpty {
             modelContext.delete(meeting)
             try? modelContext.save()
         }

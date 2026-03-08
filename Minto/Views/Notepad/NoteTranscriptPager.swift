@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UIKit
 
 enum NotePage: Int, CaseIterable {
@@ -12,7 +12,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
     @Bindable var meeting: Meeting
     @ViewBuilder var notesContent: () -> NotesContent
 
-    @State private var coordinator = iOSRecordingCoordinator.shared
+    private let coordinator = iOSRecordingCoordinator.shared
 
     private var hasTranscript: Bool {
         !meeting.segments.isEmpty || !meeting.rawTranscript.isEmpty || !coordinator.currentPartial.isEmpty
@@ -37,7 +37,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
                 }
             }
 
-            if currentPage == .notes && hasTranscript {
+            if currentPage == .notes, hasTranscript {
                 edgeIndicator
             }
         }

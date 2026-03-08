@@ -14,7 +14,7 @@ actor ClaudeService {
         var errorDescription: String? {
             switch self {
             case .noAPIKey: "Claude API key not set"
-            case .httpError(let code, let msg): "HTTP \(code): \(msg)"
+            case let .httpError(code, msg): "HTTP \(code): \(msg)"
             case .noContent: "No content in response"
             }
         }
@@ -93,46 +93,17 @@ actor ClaudeService {
     }
 
     func chat(systemPrompt: String, messages: [[String: String]]) async throws -> String {
-        let apiKey = AppSettings.claudeKey
-        guard !apiKey.isEmpty else { throw ClaudeError.noAPIKey }
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 4096,
-            "system": systemPrompt,
-            "messages": messages
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ClaudeError.httpError(0, "Invalid response")
-        }
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw ClaudeError.httpError(httpResponse.statusCode, errorBody)
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let content = json?["content"] as? [[String: Any]],
-              let firstBlock = content.first,
-              let text = firstBlock["text"] as? String else {
-            throw ClaudeError.noContent
-        }
-        return text
+        try await makeRequest(systemPrompt: systemPrompt, messages: messages)
     }
 
     // MARK: - Private
 
     private func sendRequest(systemPrompt: String, userMessage: String) async throws -> String {
+        let messages = [["role": "user", "content": userMessage]]
+        return try await makeRequest(systemPrompt: systemPrompt, messages: messages)
+    }
+
+    private func makeRequest(systemPrompt: String, messages: [[String: String]]) async throws -> String {
         let apiKey = AppSettings.claudeKey
         guard !apiKey.isEmpty else { throw ClaudeError.noAPIKey }
 
@@ -146,9 +117,7 @@ actor ClaudeService {
             "model": model,
             "max_tokens": 4096,
             "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userMessage]
-            ]
+            "messages": messages,
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -158,7 +127,6 @@ actor ClaudeService {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ClaudeError.httpError(0, "Invalid response")
         }
-
         guard httpResponse.statusCode == 200 else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw ClaudeError.httpError(httpResponse.statusCode, errorBody)
@@ -167,28 +135,27 @@ actor ClaudeService {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let content = json?["content"] as? [[String: Any]],
               let firstBlock = content.first,
-              let text = firstBlock["text"] as? String else {
+              let text = firstBlock["text"] as? String
+        else {
             throw ClaudeError.noContent
         }
-
         return text
     }
 
     private func buildAugmentSystemPrompt(toneMode: String) -> String {
-        let toneInstruction: String
-        switch toneMode {
+        let toneInstruction = switch toneMode {
         case "casual":
-            toneInstruction = """
+            """
             タメ口（カジュアルな口調）で書いてください。です/ます体は最小限にしてください。
             友達に話すような自然な日本語で書いてください。
             """
         case "formal":
-            toneInstruction = """
+            """
             敬語（尊敬語・謙譲語）を適切に使って書いてください。
             ビジネス上の敬意を持った格式高い文体で書いてください。
             """
         default: // business
-            toneInstruction = """
+            """
             です/ます体で書いてください。ビジネスに適したプロフェッショナルな文体で書いてください。
             """
         }

@@ -1,12 +1,12 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct NewNoteSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Bindable var meeting: Meeting
 
-    @State private var coordinator = iOSRecordingCoordinator.shared
+    private let coordinator = iOSRecordingCoordinator.shared
     @State private var recordingPhase: RecordingPhase = .idle
     @State private var elapsedSeconds: Int = 0
     @State private var selectedDetent: PresentationDetent = .fraction(0.7)
@@ -63,8 +63,12 @@ struct NewNoteSheet: View {
         .task(id: recordingPhase) {
             guard recordingPhase == .recording else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                if !Task.isCancelled { elapsedSeconds += 1 }
+                do {
+                    try await Task.sleep(for: .seconds(1))
+                    elapsedSeconds += 1
+                } catch {
+                    break
+                }
             }
         }
     }
@@ -75,19 +79,6 @@ struct NewNoteSheet: View {
 private extension NewNoteSheet {
     var sheetToolbar: some View {
         HStack {
-            HStack(spacing: 16) {
-                Button { } label: {
-                    Image(systemName: "photo")
-                        .font(.system(size: 20))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                Button { } label: {
-                    Image(systemName: "camera")
-                        .font(.system(size: 20))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-            }
-
             Spacer()
 
             Button { dismiss() } label: {
@@ -127,9 +118,9 @@ private extension NewNoteSheet {
     var recordingBar: some View {
         Group {
             switch recordingPhase {
-            case .idle:      idleBar
+            case .idle: idleBar
             case .recording: activeBar
-            case .paused:    pausedBar
+            case .paused: pausedBar
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: recordingPhase)
