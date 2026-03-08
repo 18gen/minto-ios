@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct NotepadBottomBar: View {
     @Environment(\.modelContext) private var modelContext
@@ -8,7 +7,6 @@ struct NotepadBottomBar: View {
     @Binding var currentPage: NotePage
 
     @State private var coordinator = iOSRecordingCoordinator.shared
-    private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     @State private var askText = ""
     @State private var askAnswer = ""
@@ -125,7 +123,7 @@ struct NotepadBottomBar: View {
             }
 
             Button {
-                haptic.impactOccurred()
+                Haptic.impact(.medium)
                 Task {
                     if coordinator.isRecording {
                         await coordinator.stopRecording()

@@ -63,6 +63,7 @@ struct AIChatView: View {
                         focus: $inputFocused,
                         placeholder: "Follow up...",
                         onSend: {
+                            Haptic.impact(.light)
                             let text = vm.inputText
                             inputFocused = false
                             vm.inputText = ""
@@ -78,6 +79,7 @@ struct AIChatView: View {
             .overlay(alignment: .bottom) {
                 if !isAtBottom {
                     Button {
+                        Haptic.impact(.light)
                         scrollToBottom(proxy)
                     } label: {
                         Image(systemName: "arrow.down")

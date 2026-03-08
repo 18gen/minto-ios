@@ -63,6 +63,7 @@ struct HomeTab: View {
     }
 
     private func createQuickNote() {
+        Haptic.impact(.light)
         let meeting = Meeting(title: "")
         modelContext.insert(meeting)
         try? modelContext.save()
@@ -71,6 +72,7 @@ struct HomeTab: View {
     }
 
     private func navigateToChat(prompt: String) {
+        Haptic.impact(.light)
         let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         let context = HomeViewModel.recentContext(from: meetings)

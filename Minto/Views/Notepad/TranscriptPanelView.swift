@@ -37,6 +37,7 @@ struct TranscriptPanelView: View {
                 Spacer()
                 Button {
                     UIPasteboard.general.string = meeting.rawTranscript
+                    Haptic.notification(.success)
                 } label: {
                     Image(systemName: "doc.on.doc")
                         .font(.system(size: 14))
@@ -79,6 +80,7 @@ struct TranscriptPanelView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         UIPasteboard.general.string = meeting.rawTranscript
+                        Haptic.notification(.success)
                     } label: {
                         Image(systemName: "doc.on.doc")
                     }

@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct NewNoteSheet: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,8 +12,6 @@ struct NewNoteSheet: View {
     @State private var selectedDetent: PresentationDetent = .fraction(0.7)
     @State private var currentPage: NotePage = .notes
     @FocusState private var isEditing: Bool
-
-    private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     enum RecordingPhase { case idle, recording, paused }
 
@@ -140,7 +137,7 @@ private extension NewNoteSheet {
 
     var idleBar: some View {
         RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
-            haptic.impactOccurred()
+            Haptic.impact(.medium)
             startRecording()
         }
     }
@@ -148,7 +145,7 @@ private extension NewNoteSheet {
     var activeBar: some View {
         HStack {
             RecordingCapsuleButton(icon: "pause.fill", style: .darkOutline) {
-                haptic.impactOccurred()
+                Haptic.impact(.medium)
                 pauseRecording()
             }
 
@@ -167,7 +164,7 @@ private extension NewNoteSheet {
     var pausedBar: some View {
         HStack {
             RecordingCapsuleButton(icon: "play.fill", style: .darkOutline) {
-                haptic.impactOccurred()
+                Haptic.impact(.medium)
                 resumeRecording()
             }
 
@@ -181,12 +178,12 @@ private extension NewNoteSheet {
     var endOrDismissKeyboardButton: some View {
         if isEditing {
             RecordingCapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
-                haptic.impactOccurred()
+                Haptic.impact(.medium)
                 isEditing = false
             }
         } else {
             RecordingCapsuleButton("End", style: .cream) {
-                haptic.impactOccurred()
+                Haptic.impact(.medium)
                 endRecording()
             }
         }

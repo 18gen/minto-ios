@@ -4,6 +4,7 @@ import MarkdownUI
 struct ChatBubble: View {
     let message: ChatMessage
 
+    @State private var copied = false
     private var isUser: Bool { message.role == .user }
 
     var body: some View {
@@ -31,6 +32,22 @@ struct ChatBubble: View {
                 } else {
                     Markdown(message.content)
                         .textSelection(.enabled)
+
+                    Button {
+                        UIPasteboard.general.string = message.content
+                        Haptic.notification(.success)
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            copied = false
+                        }
+                    } label: {
+                        Image(systemName: copied ? "checkmark" : "square.on.square")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 4)
+                    .animation(.easeInOut(duration: 0.2), value: copied)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

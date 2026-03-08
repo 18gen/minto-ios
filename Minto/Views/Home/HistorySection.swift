@@ -19,6 +19,7 @@ struct HistorySection: View {
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
+                            Haptic.notification(.warning)
                             onDelete?(meeting)
                         } label: {
                             Label("Delete", systemImage: "trash")
