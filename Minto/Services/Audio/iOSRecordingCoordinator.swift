@@ -20,6 +20,7 @@ final class iOSRecordingCoordinator {
     private let deepgramService = DeepgramStreamingService()
     private let elevenLabsService = ElevenLabsStreamingService()
     private let elevenLabsBatchService = ElevenLabsBatchService()
+    private let speakerIdService = SpeakerIdentificationService()
 
     var isRecording = false
     var currentMeeting: Meeting?
@@ -78,7 +79,7 @@ final class iOSRecordingCoordinator {
         return transcriptionMode
     }
 
-    func startRecording(meeting: Meeting, modelContext _: ModelContext) async {
+    func startRecording(meeting: Meeting, modelContext: ModelContext) async {
         recordingError = nil
 
         let isResume = currentMeeting === meeting && accumulatedRecordingSeconds > 0
@@ -94,6 +95,9 @@ final class iOSRecordingCoordinator {
             committedText = meeting.rawTranscript
             recordingStartDate = .now
         }
+
+        // Initialize Eagle speaker identification if profiles exist
+        initializeSpeakerIdentification(modelContext: modelContext, meeting: meeting)
 
         let effectiveMode = resolveTranscriptionMode()
         activeMode = effectiveMode
@@ -173,6 +177,39 @@ final class iOSRecordingCoordinator {
         }
     }
 
+    // MARK: - Eagle Speaker Identification
+
+    private func initializeSpeakerIdentification(modelContext: ModelContext, meeting: Meeting) {
+        guard !AppSettings.picovoiceKey.isEmpty else { return }
+
+        let descriptor = FetchDescriptor<SpeakerProfile>(
+            predicate: #Predicate { $0.enrollmentPercentage >= 100 }
+        )
+        guard let profiles = try? modelContext.fetch(descriptor), !profiles.isEmpty else { return }
+
+        do {
+            let profileDataList = profiles.map(\.profileData)
+            try speakerIdService.initialize(profileDataList: profileDataList)
+
+            // When Eagle identifies the user, mark it on the meeting
+            speakerIdService.onSpeakerIdentified = { [weak self] speakerIndex, _ in
+                guard let self, speakerIndex == 0 else { return }
+                // Speaker index 0 = first enrolled profile = "me"
+                Task { @MainActor [weak self] in
+                    guard let self, let meeting = self.currentMeeting else { return }
+                    if meeting.userSpeakerIndex == nil, let lastSegment = meeting.segments.last {
+                        // Auto-mark the diarization speaker as "me"
+                        if let speaker = lastSegment.speaker {
+                            meeting.markSpeakerAsUser(speaker)
+                        }
+                    }
+                }
+            }
+        } catch {
+            // Eagle init failed — continue without speaker identification
+        }
+    }
+
     /// Pause recording — keeps accumulated time, updates Live Activity to paused state.
     func pauseRecording() async {
         levelPollTimer?.invalidate()
@@ -181,6 +218,7 @@ final class iOSRecordingCoordinator {
 
         elevenLabsService.disconnect()
         deepgramService.disconnect()
+        speakerIdService.stop()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
 
@@ -203,6 +241,7 @@ final class iOSRecordingCoordinator {
 
         elevenLabsService.disconnect()
         deepgramService.disconnect()
+        speakerIdService.stop()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
 
@@ -349,6 +388,8 @@ final class iOSRecordingCoordinator {
             } else {
                 self.elevenLabsService.sendAudio(pcmData)
             }
+            // Feed Eagle in parallel for speaker identification
+            self.speakerIdService.processAudio(pcmData)
         }
 
         // Don't use WAV chunk callback in streaming mode
@@ -496,6 +537,8 @@ final class iOSRecordingCoordinator {
             } else {
                 self.deepgramService.sendAudio(pcmData)
             }
+            // Feed Eagle in parallel for speaker identification
+            self.speakerIdService.processAudio(pcmData)
         }
 
         // Don't use WAV chunk callback in cloud mode

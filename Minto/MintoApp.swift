@@ -9,6 +9,7 @@ struct MintoApp: App {
         let schema = Schema([
             Meeting.self,
             TranscriptSegment.self,
+            SpeakerProfile.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

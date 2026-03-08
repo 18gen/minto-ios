@@ -19,6 +19,7 @@ final class AppSettings {
     static var claudeKey: String { ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? "" }
     static var deepgramKey: String { ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? "" }
     static var elevenLabsKey: String { ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"] ?? "" }
+    static var picovoiceKey: String { ProcessInfo.processInfo.environment["PICOVOICE_ACCESS_KEY"] ?? "" }
 
     private init() {
         self.defaultToneMode = defaults.string(forKey: "defaultToneMode") ?? "business"
