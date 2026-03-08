@@ -34,7 +34,7 @@ private extension NotepadView {
                 .padding(.bottom, 24)
 
             TextEditor(text: $meeting.userNotes)
-                .font(.system(size: 15))
+                .font(.system(size: 17))
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 8)
