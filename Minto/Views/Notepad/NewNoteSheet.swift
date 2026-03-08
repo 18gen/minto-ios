@@ -232,6 +232,9 @@ private extension NewNoteSheet {
     }
 
     func endRecording() {
-        recordingPhase = .idle
+        Task {
+            await coordinator.stopRecording()
+            dismiss()
+        }
     }
 }
