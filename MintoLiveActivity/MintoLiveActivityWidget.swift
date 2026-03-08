@@ -22,7 +22,7 @@ struct MintoLiveActivityWidget: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    timerText(startDate: context.state.startDate)
+                    timerText(state: context.state)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
@@ -34,8 +34,11 @@ struct MintoLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 6) {
-                        Image(systemName: "waveform")
-                            .font(.system(size: 11))
+                        Image("AppLogo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 14, height: 14)
+                            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                         Text("Minto")
                             .font(.system(size: 11, weight: .medium))
                     }
@@ -52,7 +55,7 @@ struct MintoLiveActivityWidget: Widget {
                         .foregroundStyle(mintColor)
                 }
             } compactTrailing: {
-                timerText(startDate: context.state.startDate)
+                timerText(state: context.state)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
@@ -67,57 +70,50 @@ struct MintoLiveActivityWidget: Widget {
     // MARK: - Lock Screen
 
     private func lockScreenView(context: ActivityViewContext<RecordingAttributes>) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Top row: icon + title
-            HStack(spacing: 8) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 13))
-                    .foregroundStyle(mintColor)
+        HStack(spacing: 14) {
+            // App logo from asset catalog
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
+            // Title + timer
+            VStack(alignment: .leading) {
                 Text(context.attributes.meetingTitle)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
 
-                Spacer()
+                timerText(state: context.state)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.9))
             }
 
-            // Center: large timer
-            timerText(startDate: context.state.startDate)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
+            Spacer()
 
-            // Mint divider
-            RoundedRectangle(cornerRadius: 1)
-                .fill(mintColor.opacity(0.35))
-                .frame(height: 2)
-
-            // Bottom row: status + branding
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(context.state.isPaused ? .orange : mintColor)
-                    .frame(width: 6, height: 6)
-
-                Text(context.state.isPaused ? "Paused" : "Recording")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Spacer()
-
-                Text("Minto")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(mintColor.opacity(0.5))
-            }
+            // Recording indicator
+            Circle()
+                .fill(context.state.isPaused ? .orange : mintColor)
+                .frame(width: 10, height: 10)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .activityBackgroundTint(.black.opacity(0.85))
+        .activityBackgroundTint(.clear)
     }
 
     // MARK: - Helpers
 
-    private func timerText(startDate: Date) -> Text {
-        Text(timerInterval: startDate...startDate.addingTimeInterval(36000), countsDown: false)
+    private func timerText(state: RecordingAttributes.ContentState) -> Text {
+        if state.isPaused {
+            // Show frozen static time when paused
+            let m = state.accumulatedSeconds / 60
+            let s = state.accumulatedSeconds % 60
+            return Text(String(format: "%02d:%02d", m, s))
+        } else {
+            // Live system timer from synthetic start date
+            return Text(timerInterval: state.startDate...state.startDate.addingTimeInterval(36000), countsDown: false)
+        }
     }
 }

@@ -48,6 +48,13 @@
 			);
 			target = F85CE8622F5BA9900030394A /* Minto */;
 		};
+		F876885A2F5E16F700F9D8DD /* Exceptions for "Minto" folder in "MintoLiveActivity" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+			);
+			target = F8AA00062F5BA9900030394A /* MintoLiveActivity */;
+		};
 		F8AA000E2F5BA9900030394A /* Exceptions for "MintoLiveActivity" folder in "MintoLiveActivity" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -62,6 +69,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				F85CE8802F5BA9900030394A /* Exceptions for "Minto" folder in "Minto" target */,
+				F876885A2F5E16F700F9D8DD /* Exceptions for "Minto" folder in "MintoLiveActivity" target */,
 			);
 			path = Minto;
 			sourceTree = "<group>";
