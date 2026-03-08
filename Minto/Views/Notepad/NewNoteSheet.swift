@@ -60,6 +60,9 @@ struct NewNoteSheet: View {
         .onChange(of: isEditing) { _, focused in
             if focused { selectedDetent = .large }
         }
+        .onChange(of: currentPage) { _, newPage in
+            if newPage == .notes { isEditing = true }
+        }
         .task(id: recordingPhase) {
             guard recordingPhase == .recording else { return }
             while !Task.isCancelled {
