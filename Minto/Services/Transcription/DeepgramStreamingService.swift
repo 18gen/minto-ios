@@ -3,7 +3,6 @@ import Foundation
 /// Streams raw 16-bit PCM audio to Deepgram Nova-3 via WebSocket and returns
 /// speaker-diarized transcript segments in real time.
 final class DeepgramStreamingService: @unchecked Sendable {
-
     // MARK: - Types
 
     struct TranscriptResult: Sendable {
@@ -26,8 +25,8 @@ final class DeepgramStreamingService: @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: return "Deepgram API key not set"
-            case .connectionFailed(let msg): return "Deepgram connection failed: \(msg)"
+            case .noAPIKey: "Deepgram API key not set"
+            case let .connectionFailed(msg): "Deepgram connection failed: \(msg)"
             }
         }
     }
@@ -135,11 +134,11 @@ final class DeepgramStreamingService: @unchecked Sendable {
             guard let self else { return }
 
             switch result {
-            case .success(let message):
+            case let .success(message):
                 switch message {
-                case .string(let text):
+                case let .string(text):
                     self.handleMessage(text)
-                case .data(let data):
+                case let .data(data):
                     if let text = String(data: data, encoding: .utf8) {
                         self.handleMessage(text)
                     }
@@ -148,7 +147,7 @@ final class DeepgramStreamingService: @unchecked Sendable {
                 }
                 self.receiveLoop()
 
-            case .failure(let error):
+            case let .failure(error):
                 let wasConnected = self.lock.withLock {
                     let was = self._isConnected
                     self._isConnected = false

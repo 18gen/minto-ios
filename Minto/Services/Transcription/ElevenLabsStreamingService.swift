@@ -4,7 +4,6 @@ import Foundation
 /// and returns transcript segments in real time.
 /// Note: Speaker diarization is not available in realtime mode.
 final class ElevenLabsStreamingService: @unchecked Sendable {
-
     // MARK: - Types
 
     struct TranscriptResult: Sendable {
@@ -26,8 +25,8 @@ final class ElevenLabsStreamingService: @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: return "ElevenLabs API key not set"
-            case .connectionFailed(let msg): return "ElevenLabs connection failed: \(msg)"
+            case .noAPIKey: "ElevenLabs API key not set"
+            case let .connectionFailed(msg): "ElevenLabs connection failed: \(msg)"
             }
         }
     }
@@ -123,11 +122,11 @@ final class ElevenLabsStreamingService: @unchecked Sendable {
             guard let self else { return }
 
             switch result {
-            case .success(let message):
+            case let .success(message):
                 switch message {
-                case .string(let text):
+                case let .string(text):
                     self.handleMessage(text)
-                case .data(let data):
+                case let .data(data):
                     if let text = String(data: data, encoding: .utf8) {
                         self.handleMessage(text)
                     }
@@ -136,7 +135,7 @@ final class ElevenLabsStreamingService: @unchecked Sendable {
                 }
                 self.receiveLoop()
 
-            case .failure(let error):
+            case let .failure(error):
                 let wasConnected = self.lock.withLock {
                     let was = self._isConnected
                     self._isConnected = false

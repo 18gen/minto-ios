@@ -48,22 +48,22 @@ struct RecordingCapsuleButton: View {
 
     private var foregroundColor: Color {
         switch style {
-        case .cream: return .black
-        case .dark, .darkOutline: return .white
+        case .cream: .black
+        case .dark, .darkOutline: .white
         }
     }
 
     private var fillColor: Color {
         switch style {
-        case .cream: return AppTheme.creamCTA
-        case .dark, .darkOutline: return AppTheme.darkCapsule
+        case .cream: AppTheme.creamCTA
+        case .dark, .darkOutline: AppTheme.darkCapsule
         }
     }
 
     private var borderColor: Color {
         switch style {
-        case .darkOutline: return .white.opacity(0.25)
-        default: return .clear
+        case .darkOutline: .white.opacity(0.25)
+        default: .clear
         }
     }
 }

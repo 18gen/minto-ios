@@ -1,12 +1,12 @@
-import Foundation
-import SwiftData
-import Observation
 import AVFoundation
+import Foundation
+import Observation
+import SwiftData
 
 enum TranscriptionMode: String, CaseIterable {
     case elevenLabs // ElevenLabs Scribe v2 (best Japanese accuracy)
-    case cloud      // Deepgram Nova-3 (fallback)
-    case onDevice   // Whisper (offline fallback)
+    case cloud // Deepgram Nova-3 (fallback)
+    case onDevice // Whisper (offline fallback)
 }
 
 @Observable
@@ -42,7 +42,7 @@ final class iOSRecordingCoordinator {
 
     /// Resolves which transcription mode to use based on available keys.
     private func resolveTranscriptionMode() -> TranscriptionMode {
-        if transcriptionMode == .elevenLabs && !AppSettings.elevenLabsKey.isEmpty {
+        if transcriptionMode == .elevenLabs, !AppSettings.elevenLabsKey.isEmpty {
             return .elevenLabs
         }
         // ElevenLabs key missing — fall back
@@ -50,16 +50,16 @@ final class iOSRecordingCoordinator {
             if !AppSettings.deepgramKey.isEmpty { return .cloud }
             if !AppSettings.whisperKey.isEmpty { return .onDevice }
         }
-        if transcriptionMode == .cloud && AppSettings.deepgramKey.isEmpty {
+        if transcriptionMode == .cloud, AppSettings.deepgramKey.isEmpty {
             return .onDevice
         }
-        if transcriptionMode == .onDevice && AppSettings.whisperKey.isEmpty && !AppSettings.deepgramKey.isEmpty {
+        if transcriptionMode == .onDevice, AppSettings.whisperKey.isEmpty, !AppSettings.deepgramKey.isEmpty {
             return .cloud
         }
         return transcriptionMode
     }
 
-    func startRecording(meeting: Meeting, modelContext: ModelContext) async {
+    func startRecording(meeting: Meeting, modelContext _: ModelContext) async {
         recordingError = nil
         currentMeeting = meeting
         meeting.status = "recording"
@@ -71,18 +71,17 @@ final class iOSRecordingCoordinator {
         activeMode = effectiveMode
 
         // Validate we have at least one API key
-        if effectiveMode == .onDevice && AppSettings.whisperKey.isEmpty {
+        if effectiveMode == .onDevice, AppSettings.whisperKey.isEmpty {
             recordingError = "No API key configured. Add an ElevenLabs, Deepgram, or OpenAI key."
             meeting.status = "idle"
             return
         }
 
         // Request mic permission
-        let granted: Bool
-        if #available(iOS 17.0, *) {
-            granted = await AVAudioApplication.requestRecordPermission()
+        let granted: Bool = if #available(iOS 17.0, *) {
+            await AVAudioApplication.requestRecordPermission()
         } else {
-            granted = await withCheckedContinuation { continuation in
+            await withCheckedContinuation { continuation in
                 AVAudioSession.sharedInstance().requestRecordPermission { result in
                     continuation.resume(returning: result)
                 }
@@ -129,7 +128,7 @@ final class iOSRecordingCoordinator {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.currentAudioLevel = self.audioCaptureService.currentAudioLevel
-                    if self.recordingError != nil && self.audioCaptureService.hasReceivedNonSilence {
+                    if self.recordingError != nil, self.audioCaptureService.hasReceivedNonSilence {
                         self.recordingError = nil
                     }
 
@@ -318,7 +317,8 @@ final class iOSRecordingCoordinator {
     private func parseSpeakerIndex(_ speakerId: String) -> Int {
         // ElevenLabs returns "speaker_0", "speaker_1", etc.
         if let lastComponent = speakerId.split(separator: "_").last,
-           let index = Int(lastComponent) {
+           let index = Int(lastComponent)
+        {
             return index
         }
         return 0
@@ -386,7 +386,8 @@ final class iOSRecordingCoordinator {
             // Merge with last segment if same speaker
             if let lastSegment = meeting.segments.last,
                lastSegment.speaker == run.speaker,
-               lastSegment.source == "microphone" {
+               lastSegment.source == "microphone"
+            {
                 lastSegment.text += runText
                 lastSegment.endTime = endTime
             } else {
@@ -442,7 +443,7 @@ final class iOSRecordingCoordinator {
 
     // MARK: - Whisper Micro-Batch
 
-    nonisolated private static let whisperHallucinations: Set<String> = [
+    private nonisolated static let whisperHallucinations: Set<String> = [
         "ご清聴ありがとうございました。",
         "ご清聴ありがとうございました",
         "ご視聴ありがとうございました。",

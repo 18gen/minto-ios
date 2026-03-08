@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct NotepadView: View {
     @Environment(\.modelContext) private var modelContext
@@ -25,6 +25,7 @@ struct NotepadView: View {
 }
 
 // MARK: - Subviews
+
 private extension NotepadView {
     var content: some View {
         VStack(spacing: 5) {
@@ -91,6 +92,7 @@ private extension NotepadView {
 }
 
 // MARK: - Computed helpers
+
 private extension NotepadView {
     var shareText: String {
         var parts: [String] = []
@@ -110,10 +112,10 @@ private extension NotepadView {
         if cal.isDateInTomorrow(meeting.startDate) { return "Tomorrow" }
         return meeting.startDate.formatted(date: .abbreviated, time: .shortened)
     }
-
 }
 
 // MARK: - Actions
+
 private extension NotepadView {
     func augment() async {
         isAugmenting = true
