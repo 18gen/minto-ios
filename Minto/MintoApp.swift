@@ -25,9 +25,14 @@ struct MintoApp: App {
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .background {
-                // Recording continues via background audio mode;
-                // Live Activity keeps showing status on lock screen
+            let coordinator = iOSRecordingCoordinator.shared
+            switch newPhase {
+            case .background:
+                coordinator.handleAppBackgrounded()
+            case .active:
+                coordinator.handleAppForegrounded()
+            default:
+                break
             }
         }
     }

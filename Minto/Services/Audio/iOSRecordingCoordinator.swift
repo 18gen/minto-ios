@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import SwiftData
+import UIKit
 
 enum TranscriptionMode: String, CaseIterable {
     case elevenLabs // ElevenLabs Scribe v2 (best Japanese accuracy)
@@ -37,6 +38,11 @@ final class iOSRecordingCoordinator {
     private let activityManager = RecordingActivityManager.shared
     private var lastActivityUpdateSecond: Int = -1
     private var activeMode: TranscriptionMode = .elevenLabs
+
+    private let backgroundLock = NSLock()
+    private var _isInBackground = false
+    private var _backgroundAudioBuffer: [Data] = []
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
 
     private init() {}
 
@@ -123,23 +129,7 @@ final class iOSRecordingCoordinator {
             lastActivityUpdateSecond = -1
             activityManager.startActivity(title: meeting.title)
 
-            levelPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-                guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.currentAudioLevel = self.audioCaptureService.currentAudioLevel
-                    if self.recordingError != nil, self.audioCaptureService.hasReceivedNonSilence {
-                        self.recordingError = nil
-                    }
-
-                    // Update Live Activity once per second
-                    let elapsed = Int(Date.now.timeIntervalSince(self.recordingStartDate))
-                    if elapsed != self.lastActivityUpdateSecond {
-                        self.lastActivityUpdateSecond = elapsed
-                        self.activityManager.updateActivity(elapsedSeconds: elapsed, isPaused: false)
-                    }
-                }
-            }
+            startLevelPollTimer()
 
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(5))
@@ -165,6 +155,13 @@ final class iOSRecordingCoordinator {
         deepgramService.disconnect()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
+
+        // Clean up background state
+        backgroundLock.withLock {
+            _isInBackground = false
+            _backgroundAudioBuffer = []
+        }
+        endBackgroundTask()
 
         // Save full recording before stopping capture (samples cleared on stop)
         var savedAudioURL: URL?
@@ -193,12 +190,121 @@ final class iOSRecordingCoordinator {
         }
     }
 
+    // MARK: - Level Poll Timer
+
+    private func startLevelPollTimer() {
+        levelPollTimer?.invalidate()
+        levelPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.currentAudioLevel = self.audioCaptureService.currentAudioLevel
+                if self.recordingError != nil, self.audioCaptureService.hasReceivedNonSilence {
+                    self.recordingError = nil
+                }
+
+                // Update Live Activity once per second
+                let elapsed = Int(Date.now.timeIntervalSince(self.recordingStartDate))
+                if elapsed != self.lastActivityUpdateSecond {
+                    self.lastActivityUpdateSecond = elapsed
+                    self.activityManager.updateActivity(elapsedSeconds: elapsed, isPaused: false)
+                }
+            }
+        }
+    }
+
+    // MARK: - Background / Foreground
+
+    func handleAppBackgrounded() {
+        guard isRecording else { return }
+
+        backgroundLock.withLock { _isInBackground = true }
+
+        // Disconnect WebSocket — iOS suspends it in background anyway
+        switch activeMode {
+        case .elevenLabs:
+            elevenLabsService.disconnect()
+        case .cloud:
+            deepgramService.disconnect()
+        case .onDevice:
+            break
+        }
+
+        // Stop level poll timer (won't fire in background)
+        levelPollTimer?.invalidate()
+        levelPollTimer = nil
+
+        // Request extra time for clean disconnect
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.endBackgroundTask()
+            }
+        }
+    }
+
+    func handleAppForegrounded() {
+        guard isRecording else { return }
+
+        endBackgroundTask()
+
+        // Reconnect WebSocket
+        do {
+            switch activeMode {
+            case .elevenLabs:
+                try elevenLabsService.connect()
+            case .cloud:
+                try deepgramService.connect()
+            case .onDevice:
+                break
+            }
+        } catch {
+            recordingError = "Reconnect failed: \(error.localizedDescription)"
+        }
+
+        // Atomically drain buffer and switch to foreground mode
+        let buffered = backgroundLock.withLock {
+            let buf = _backgroundAudioBuffer
+            _backgroundAudioBuffer = []
+            _isInBackground = false
+            return buf
+        }
+
+        // Flush buffered audio to the reconnected WebSocket
+        for chunk in buffered {
+            switch activeMode {
+            case .elevenLabs:
+                elevenLabsService.sendAudio(chunk)
+            case .cloud:
+                deepgramService.sendAudio(chunk)
+            case .onDevice:
+                break
+            }
+        }
+
+        // Restart level poll timer and audio level display
+        startLevelPollTimer()
+    }
+
+    private func endBackgroundTask() {
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+    }
+
     // MARK: - ElevenLabs (Realtime) Setup
 
     private func setupElevenLabsCallbacks() {
         // Stream raw PCM to ElevenLabs (base64-encoded internally)
+        // When backgrounded, buffer locally instead of streaming
         audioCaptureService.onRawPCMReady = { [weak self] pcmData in
-            self?.elevenLabsService.sendAudio(pcmData)
+            guard let self else { return }
+            let inBackground = self.backgroundLock.withLock { self._isInBackground }
+            if inBackground {
+                self.backgroundLock.withLock { self._backgroundAudioBuffer.append(pcmData) }
+            } else {
+                self.elevenLabsService.sendAudio(pcmData)
+            }
         }
 
         // Don't use WAV chunk callback in streaming mode
@@ -328,8 +434,15 @@ final class iOSRecordingCoordinator {
 
     private func setupDeepgramCallbacks() {
         // Stream raw PCM to Deepgram
+        // When backgrounded, buffer locally instead of streaming
         audioCaptureService.onRawPCMReady = { [weak self] pcmData in
-            self?.deepgramService.sendAudio(pcmData)
+            guard let self else { return }
+            let inBackground = self.backgroundLock.withLock { self._isInBackground }
+            if inBackground {
+                self.backgroundLock.withLock { self._backgroundAudioBuffer.append(pcmData) }
+            } else {
+                self.deepgramService.sendAudio(pcmData)
+            }
         }
 
         // Don't use WAV chunk callback in cloud mode

@@ -28,6 +28,7 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
     private var cachedConverter: AVAudioConverter?
     private var interruptionObserver: Any?
+    private var routeChangeObserver: Any?
 
     private var fullRecordingSamples: [Float] = []
     private var _shouldAccumulateFullRecording = false
@@ -109,13 +110,22 @@ final class iOSAudioCaptureService: @unchecked Sendable {
             chunkStartTime = .now
         }
 
-        // Listen for audio session interruptions (e.g. app backgrounded, phone call)
+        // Listen for audio session interruptions (e.g. phone call)
         interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance(),
             queue: nil
         ) { [weak self] notification in
             self?.handleInterruption(notification)
+        }
+
+        // Listen for audio route changes (e.g. Bluetooth disconnect)
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil
+        ) { [weak self] notification in
+            self?.handleRouteChange(notification)
         }
     }
 
@@ -126,22 +136,33 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
         switch type {
         case .began:
-            // Engine is paused by the system; just update state
+            // Engine is paused by the system — nothing to do here
             break
 
         case .ended:
-            let options = (userInfo[AVAudioSessionInterruptionOptionKey] as? UInt)
-                .map { AVAudioSession.InterruptionOptions(rawValue: $0) } ?? []
-
-            if options.contains(.shouldResume) {
-                let eng = lock.withLock { engine }
-                guard let eng else { return }
-                try? AVAudioSession.sharedInstance().setActive(true)
-                try? eng.start()
-            }
+            // Always attempt to restart — don't gate on .shouldResume
+            // iOS may not set that flag for background transitions
+            let eng = lock.withLock { engine }
+            guard let eng else { return }
+            try? AVAudioSession.sharedInstance().setActive(true)
+            try? eng.start()
 
         @unknown default:
             break
+        }
+    }
+
+    private func handleRouteChange(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
+
+        // Restart engine when a device is removed (e.g. Bluetooth headset disconnects)
+        if reason == .oldDeviceUnavailable {
+            let eng = lock.withLock { engine }
+            guard let eng else { return }
+            try? AVAudioSession.sharedInstance().setActive(true)
+            try? eng.start()
         }
     }
 
@@ -149,6 +170,10 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         if let observer = interruptionObserver {
             NotificationCenter.default.removeObserver(observer)
             interruptionObserver = nil
+        }
+        if let observer = routeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            routeChangeObserver = nil
         }
 
         let eng = lock.withLock {
