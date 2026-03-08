@@ -22,14 +22,14 @@ struct PillButtonStyle: ButtonStyle {
 
 struct SlashBadge: View {
     enum Style {
-        case blue
+        case mint
         case green
         case cyan
         case gray
 
         var fill: Color {
             switch self {
-            case .blue: AppTheme.primary.opacity(0.22)
+            case .mint: AppTheme.primary.opacity(0.22)
             case .green: Color.green.opacity(0.22)
             case .cyan: Color.cyan.opacity(0.22)
             case .gray: Color.primary.opacity(0.10)
@@ -38,7 +38,7 @@ struct SlashBadge: View {
 
         var slash: Color {
             switch self {
-            case .blue: AppTheme.primary
+            case .mint: AppTheme.primary
             case .green: .green
             case .cyan: .cyan
             case .gray: .secondary
@@ -46,7 +46,7 @@ struct SlashBadge: View {
         }
     }
 
-    var style: Style = .blue
+    var style: Style = .mint
 
     var body: some View {
         ZStack {

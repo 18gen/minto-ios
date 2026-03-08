@@ -20,7 +20,7 @@ struct NotepadBottomBar: View {
 
     private var receipts: [Receipt] {
         [
-            .init(title: "Write follow up email", prompt: "Write a follow up email based on these notes.", style: .blue),
+            .init(title: "Write follow up email", prompt: "Write a follow up email based on these notes.", style: .mint),
             .init(title: "List my todos", prompt: "List all action items and todos.", style: .green),
             .init(title: "Make notes longer", prompt: "Rewrite notes to be more detailed and structured.", style: .cyan),
         ]

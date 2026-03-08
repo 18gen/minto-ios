@@ -1,9 +1,9 @@
 import SwiftUI
 
 enum AppTheme {
-    static let primary = Color.accentColor
+    static let primary = Color(red: 0.243, green: 0.706, blue: 0.537) // #3EB489 Mint
 
-    static let accent = Color(red: 0.40, green: 0.55, blue: 0.68)
+    static let accent = Color(red: 0.180, green: 0.608, blue: 0.455) // #2E9B74 Mint subtle
 
     static let background = Color.black
 
