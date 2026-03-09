@@ -146,12 +146,12 @@ private extension NewNoteSheet {
 
     var idleBar: some View {
         HStack {
-            RecordingCapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
+            CapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
                 Haptic.impact(.medium)
                 startRecording()
             }
             if isEditing {
-                RecordingCapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
+                CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
                     Haptic.impact(.medium)
                     isEditing = false
                 }
@@ -161,7 +161,7 @@ private extension NewNoteSheet {
 
     var activeBar: some View {
         HStack {
-            RecordingCapsuleButton(icon: "pause.fill", style: .darkOutline) {
+            CapsuleButton(icon: "pause.fill", style: .darkOutline) {
                 Haptic.impact(.medium)
                 pauseRecording()
             }
@@ -180,7 +180,7 @@ private extension NewNoteSheet {
 
     var pausedBar: some View {
         HStack {
-            RecordingCapsuleButton(icon: "play.fill", style: .darkOutline) {
+            CapsuleButton(icon: "play.fill", style: .darkOutline) {
                 Haptic.impact(.medium)
                 resumeRecording()
             }
@@ -194,12 +194,12 @@ private extension NewNoteSheet {
     @ViewBuilder
     var endOrDismissKeyboardButton: some View {
         if isEditing {
-            RecordingCapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
+            CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
                 Haptic.impact(.medium)
                 isEditing = false
             }
         } else {
-            RecordingCapsuleButton("End", style: .cream) {
+            CapsuleButton("End", style: .cream) {
                 Haptic.impact(.medium)
                 endRecording()
             }
