@@ -2,11 +2,10 @@ import AVFoundation
 import Foundation
 import Observation
 import SwiftData
-import UIKit
 
 enum TranscriptionMode: String, CaseIterable {
     case elevenLabs // ElevenLabs Scribe v2 (best Japanese accuracy)
-    case cloud // Deepgram Nova-3 (fallback)
+    case deepgram // Deepgram Nova-3
     case onDevice // Whisper (offline fallback)
 }
 
@@ -19,8 +18,9 @@ final class iOSRecordingCoordinator {
     private let whisperService = WhisperService()
     private let deepgramService = DeepgramStreamingService()
     private let elevenLabsService = ElevenLabsStreamingService()
-    private let elevenLabsBatchService = ElevenLabsBatchService()
     private let speakerIdService = SpeakerIdentificationService()
+    private let postRecordingProcessor = PostRecordingProcessor()
+    private let backgroundManager = BackgroundAudioManager()
 
     var isRecording = false
     var currentMeeting: Meeting?
@@ -30,8 +30,8 @@ final class iOSRecordingCoordinator {
     var currentPartial: String = ""
     var currentAudioLevel: Float = 0.0
 
-    var isProcessingBatch = false
-    var batchProcessingStatus: String = ""
+    var isProcessingBatch: Bool { postRecordingProcessor.isProcessing }
+    var batchProcessingStatus: String { postRecordingProcessor.statusMessage }
 
     private var committedText: String = ""
     private var recordingStartDate: Date = .now
@@ -53,11 +53,6 @@ final class iOSRecordingCoordinator {
         }
     }
 
-    private let backgroundLock = NSLock()
-    private var _isInBackground = false
-    private var _backgroundAudioBuffer: [Data] = []
-    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
-
     private init() {}
 
     /// Resolves which transcription mode to use based on available keys.
@@ -67,14 +62,14 @@ final class iOSRecordingCoordinator {
         }
         // ElevenLabs key missing — fall back
         if transcriptionMode == .elevenLabs {
-            if !AppSettings.deepgramKey.isEmpty { return .cloud }
+            if !AppSettings.deepgramKey.isEmpty { return .deepgram }
             if !AppSettings.whisperKey.isEmpty { return .onDevice }
         }
-        if transcriptionMode == .cloud, AppSettings.deepgramKey.isEmpty {
+        if transcriptionMode == .deepgram, AppSettings.deepgramKey.isEmpty {
             return .onDevice
         }
         if transcriptionMode == .onDevice, AppSettings.whisperKey.isEmpty, !AppSettings.deepgramKey.isEmpty {
-            return .cloud
+            return .deepgram
         }
         return transcriptionMode
     }
@@ -131,7 +126,7 @@ final class iOSRecordingCoordinator {
         case .elevenLabs:
             setupElevenLabsCallbacks()
             audioCaptureService.shouldAccumulateFullRecording = true
-        case .cloud:
+        case .deepgram:
             setupDeepgramCallbacks()
             audioCaptureService.shouldAccumulateFullRecording = false
         case .onDevice:
@@ -144,7 +139,7 @@ final class iOSRecordingCoordinator {
             switch effectiveMode {
             case .elevenLabs:
                 try elevenLabsService.connect()
-            case .cloud:
+            case .deepgram:
                 try deepgramService.connect()
             case .onDevice:
                 break
@@ -245,12 +240,7 @@ final class iOSRecordingCoordinator {
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
 
-        // Clean up background state
-        backgroundLock.withLock {
-            _isInBackground = false
-            _backgroundAudioBuffer = []
-        }
-        endBackgroundTask()
+        backgroundManager.reset()
 
         // Save full recording before stopping capture (samples cleared on stop)
         var savedAudioURL: URL?
@@ -271,7 +261,13 @@ final class iOSRecordingCoordinator {
         if activeMode == .elevenLabs, let meeting = currentMeeting, let audioURL = savedAudioURL {
             meeting.status = "processing"
             Task { @MainActor [weak self] in
-                await self?.runPostRecordingPipeline(meeting: meeting, audioURL: audioURL)
+                guard let self else { return }
+                if let result = await self.postRecordingProcessor.process(meeting: meeting, audioURL: audioURL) {
+                    self.applyPostRecordingResult(result, to: meeting)
+                }
+                meeting.status = "done"
+                self.currentMeeting = nil
+                self.committedText = ""
             }
         } else {
             currentMeeting?.status = "done"
@@ -301,78 +297,44 @@ final class iOSRecordingCoordinator {
     func handleAppBackgrounded() {
         guard isRecording else { return }
 
-        backgroundLock.withLock { _isInBackground = true }
-
-        // Disconnect WebSocket — iOS suspends it in background anyway
-        switch activeMode {
-        case .elevenLabs:
-            elevenLabsService.disconnect()
-        case .cloud:
-            deepgramService.disconnect()
-        case .onDevice:
-            break
-        }
-
-        // Stop level poll timer (won't fire in background)
-        levelPollTimer?.invalidate()
-        levelPollTimer = nil
-
-        // Request extra time for clean disconnect
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.endBackgroundTask()
+        let mode = activeMode
+        backgroundManager.enterBackground {
+            switch mode {
+            case .elevenLabs: self.elevenLabsService.disconnect()
+            case .deepgram: self.deepgramService.disconnect()
+            case .onDevice: break
             }
         }
+
+        levelPollTimer?.invalidate()
+        levelPollTimer = nil
     }
 
     func handleAppForegrounded() {
         guard isRecording else { return }
 
-        endBackgroundTask()
-
         // Reconnect WebSocket
         do {
             switch activeMode {
-            case .elevenLabs:
-                try elevenLabsService.connect()
-            case .cloud:
-                try deepgramService.connect()
-            case .onDevice:
-                break
+            case .elevenLabs: try elevenLabsService.connect()
+            case .deepgram: try deepgramService.connect()
+            case .onDevice: break
             }
         } catch {
             recordingError = "Reconnect failed: \(error.localizedDescription)"
         }
 
-        // Atomically drain buffer and switch to foreground mode
-        let buffered = backgroundLock.withLock {
-            let buf = _backgroundAudioBuffer
-            _backgroundAudioBuffer = []
-            _isInBackground = false
-            return buf
-        }
-
-        // Flush buffered audio to the reconnected WebSocket
+        // Drain buffered audio and flush to reconnected stream
+        let buffered = backgroundManager.enterForeground()
         for chunk in buffered {
             switch activeMode {
-            case .elevenLabs:
-                elevenLabsService.sendAudio(chunk)
-            case .cloud:
-                deepgramService.sendAudio(chunk)
-            case .onDevice:
-                break
+            case .elevenLabs: elevenLabsService.sendAudio(chunk)
+            case .deepgram: deepgramService.sendAudio(chunk)
+            case .onDevice: break
             }
         }
 
-        // Restart level poll timer and audio level display
         startLevelPollTimer()
-    }
-
-    private func endBackgroundTask() {
-        if backgroundTaskID != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTaskID)
-            backgroundTaskID = .invalid
-        }
     }
 
     // MARK: - ElevenLabs (Realtime) Setup
@@ -382,13 +344,11 @@ final class iOSRecordingCoordinator {
         // When backgrounded, buffer locally instead of streaming
         audioCaptureService.onRawPCMReady = { [weak self] pcmData in
             guard let self else { return }
-            let inBackground = self.backgroundLock.withLock { self._isInBackground }
-            if inBackground {
-                self.backgroundLock.withLock { self._backgroundAudioBuffer.append(pcmData) }
+            if self.backgroundManager.isInBackground {
+                self.backgroundManager.bufferAudio(pcmData)
             } else {
                 self.elevenLabsService.sendAudio(pcmData)
             }
-            // Feed Eagle in parallel for speaker identification
             self.speakerIdService.processAudio(pcmData)
         }
 
@@ -450,94 +410,44 @@ final class iOSRecordingCoordinator {
         }
     }
 
-    // MARK: - Post-Recording Pipeline (Batch Diarization + LLM)
+    // MARK: - Post-Recording Result
 
-    @MainActor
-    private func runPostRecordingPipeline(meeting: Meeting, audioURL: URL) async {
-        isProcessingBatch = true
+    private func applyPostRecordingResult(_ result: PostRecordingProcessor.ProcessedResult, to meeting: Meeting) {
+        meeting.segments.removeAll()
+        let existingNames = meeting.speakerNames
+        let userIdx = meeting.userSpeakerIndex
 
-        // Step 1: Batch transcription with speaker diarization
-        batchProcessingStatus = "Analyzing speakers..."
-        do {
-            let result = try await elevenLabsBatchService.transcribe(audioFileURL: audioURL)
+        for seg in result.segments {
+            let isUser = (seg.speaker == userIdx)
+            let label: String? = isUser ? "You" : existingNames[seg.speaker]
 
-            // Replace realtime segments with diarized version
-            meeting.segments.removeAll()
-            let existingNames = meeting.speakerNames
-            let userIdx = meeting.userSpeakerIndex
-
-            for utterance in result.utterances {
-                let idx = parseSpeakerIndex(utterance.speakerId)
-                let isUser = (idx == userIdx)
-                let label: String? = isUser ? "You" : existingNames[idx]
-
-                let segment = TranscriptSegment(
-                    text: utterance.text,
-                    startTime: utterance.start,
-                    endTime: utterance.end,
-                    source: "microphone",
-                    speaker: idx,
-                    speakerLabel: label,
-                    isUserSpeaker: isUser
-                )
-                meeting.segments.append(segment)
-            }
-            meeting.rawTranscript = result.text
-            committedText = result.text
-        } catch {
-            // Keep realtime transcript on batch failure
-            print("Batch transcription failed: \(error.localizedDescription)")
+            let segment = TranscriptSegment(
+                text: seg.text,
+                startTime: seg.startTime,
+                endTime: seg.endTime,
+                source: "microphone",
+                speaker: seg.speaker,
+                speakerLabel: label,
+                isUserSpeaker: isUser
+            )
+            meeting.segments.append(segment)
         }
-
-        // Step 2: LLM transcript correction
-        if !AppSettings.claudeKey.isEmpty {
-            batchProcessingStatus = "Polishing transcript..."
-            do {
-                let corrected = try await ClaudeService.shared.correctTranscript(
-                    rawTranscript: meeting.rawTranscript
-                )
-                meeting.rawTranscript = corrected
-                committedText = corrected
-            } catch {
-                // Keep uncorrected transcript on LLM failure
-                print("LLM correction failed: \(error.localizedDescription)")
-            }
-        }
-
-        // Clean up saved audio file
-        try? FileManager.default.removeItem(at: audioURL)
-
-        meeting.status = "done"
-        isProcessingBatch = false
-        batchProcessingStatus = ""
-        currentMeeting = nil
-        committedText = ""
+        meeting.rawTranscript = result.fullText
+        committedText = result.fullText
     }
 
-    private func parseSpeakerIndex(_ speakerId: String) -> Int {
-        // ElevenLabs returns "speaker_0", "speaker_1", etc.
-        if let lastComponent = speakerId.split(separator: "_").last,
-           let index = Int(lastComponent)
-        {
-            return index
-        }
-        return 0
-    }
-
-    // MARK: - Deepgram (Cloud) Setup
+    // MARK: - Deepgram Setup
 
     private func setupDeepgramCallbacks() {
         // Stream raw PCM to Deepgram
         // When backgrounded, buffer locally instead of streaming
         audioCaptureService.onRawPCMReady = { [weak self] pcmData in
             guard let self else { return }
-            let inBackground = self.backgroundLock.withLock { self._isInBackground }
-            if inBackground {
-                self.backgroundLock.withLock { self._backgroundAudioBuffer.append(pcmData) }
+            if self.backgroundManager.isInBackground {
+                self.backgroundManager.bufferAudio(pcmData)
             } else {
                 self.deepgramService.sendAudio(pcmData)
             }
-            // Feed Eagle in parallel for speaker identification
             self.speakerIdService.processAudio(pcmData)
         }
 
