@@ -18,7 +18,7 @@ struct NotepadView: View {
             }
             NotepadBottomBar(meeting: meeting, currentPage: $currentPage)
         }
-        .background(AppTheme.background)
+        .background(AppTheme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
     }
@@ -48,7 +48,7 @@ private extension NotepadView {
                     .padding(.bottom, 4)
             }
         }
-        .padding(.bottom, 72)
+        .padding(.bottom, 54)
     }
 
     var metadataRow: some View {
