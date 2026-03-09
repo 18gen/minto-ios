@@ -3,7 +3,7 @@ import SwiftUI
 
 private struct SettingsRoute: Hashable {}
 
-struct HomeTab: View {
+struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Meeting.startDate, order: .reverse) private var meetings: [Meeting]
     @State private var navigationPath = NavigationPath()
@@ -151,7 +151,7 @@ struct HomeTab: View {
 
 // MARK: - Floating Bar
 
-private extension HomeTab {
+private extension HomeView {
     var floatingBar: some View {
         VStack(spacing: 0) {
             // Gradient fade — no background behind this, so .clear shows List content
