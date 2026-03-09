@@ -14,12 +14,13 @@ final class AppSettings {
         didSet { defaults.set(autoRecord, forKey: "autoRecord") }
     }
 
-    // Thread-safe static accessors — reads from Xcode scheme environment variables
-    static var whisperKey: String { ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "" }
-    static var claudeKey: String { ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? "" }
-    static var deepgramKey: String { ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? "" }
-    static var elevenLabsKey: String { ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"] ?? "" }
-    static var picovoiceKey: String { ProcessInfo.processInfo.environment["PICOVOICE_ACCESS_KEY"] ?? "" }
+    // Thread-safe static accessors — reads from Xcode scheme environment variables.
+    // nonisolated so actors (ClaudeService, WhisperService, etc.) can access without crossing isolation.
+    nonisolated static var whisperKey: String { ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "" }
+    nonisolated static var claudeKey: String { ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? "" }
+    nonisolated static var deepgramKey: String { ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? "" }
+    nonisolated static var elevenLabsKey: String { ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"] ?? "" }
+    nonisolated static var picovoiceKey: String { ProcessInfo.processInfo.environment["PICOVOICE_ACCESS_KEY"] ?? "" }
 
     private init() {
         self.defaultToneMode = defaults.string(forKey: "defaultToneMode") ?? "business"

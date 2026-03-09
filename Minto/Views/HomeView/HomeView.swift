@@ -25,11 +25,7 @@ struct HomeView: View {
                     showChatDrawer = false
                     chatConversation = conv
                     chatInitialPrompt = nil
-                    // Delay presentation so drawer spring animation doesn't
-                    // interfere with fullScreenCover transition.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        showChat = true
-                    }
+                    showChat = true
                 },
                 onNewChat: {
                     showChatDrawer = false
@@ -38,9 +34,7 @@ struct HomeView: View {
                     modelContext.insert(conv)
                     chatConversation = conv
                     chatInitialPrompt = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        showChat = true
-                    }
+                    showChat = true
                 }
             )
         } content: {
@@ -95,14 +89,14 @@ struct HomeView: View {
                         NewNoteSheet(meeting: meeting)
                     }
                 }
-                .fullScreenCover(isPresented: $showChat) {
-                    if let conv = chatConversation {
-                        ChatView(
-                            conversation: conv,
-                            initialPrompt: chatInitialPrompt
-                        )
-                    }
-                }
+            }
+        }
+        .fullScreenCover(isPresented: $showChat) {
+            if let conv = chatConversation {
+                ChatView(
+                    conversation: conv,
+                    initialPrompt: chatInitialPrompt
+                )
             }
         }
     }

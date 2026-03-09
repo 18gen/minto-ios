@@ -74,7 +74,7 @@ actor ElevenLabsBatchService {
 
     // MARK: - Private
 
-    private func decodeBatchResponse(_ data: Data) throws -> BatchResult {
+    private nonisolated func decodeBatchResponse(_ data: Data) throws -> BatchResult {
         do {
             let response = try JSONDecoder().decode(Response.self, from: data)
 
@@ -96,12 +96,12 @@ actor ElevenLabsBatchService {
 
 // MARK: - Response Models
 
-private struct Response: Decodable {
+private struct Response: Decodable, Sendable {
     let text: String?
     let utterances: [ResponseUtterance]?
 }
 
-private struct ResponseUtterance: Decodable {
+private struct ResponseUtterance: Decodable, Sendable {
     let text: String
     let start: Double
     let end: Double
