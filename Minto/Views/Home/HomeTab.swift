@@ -7,7 +7,7 @@ struct HomeTab: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Meeting.startDate, order: .reverse) private var meetings: [Meeting]
     @State private var navigationPath = NavigationPath()
-    @StateObject private var vm = HomeViewModel()
+    @State private var vm = HomeViewModel()
     @FocusState private var askFocused: Bool
 
     @State private var showNewNoteSheet = false
@@ -18,86 +18,17 @@ struct HomeTab: View {
     @State private var showChatDrawer = false
 
     var body: some View {
-        ZStack(alignment: .leading) {
-        NavigationStack(path: $navigationPath) {
-            ZStack(alignment: .bottom) {
-                List {
-                    HistorySection(meetings: meetings, onSelect: { meeting in
-                        guard navigationPath.isEmpty else { return }
-                        navigationPath.append(meeting)
-                    }, onDelete: { meeting in
-                        modelContext.delete(meeting)
-                        try? modelContext.save()
-                    })
-                }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .contentMargins(.top, 12)
-                .contentMargins(.bottom, 120)
-                .onTapGesture { askFocused = false }
-
-                floatingBar
-            }
-            .background(AppTheme.background.ignoresSafeArea())
-            .navigationTitle("Minto")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        openChatDrawer()
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        navigationPath.append(SettingsRoute())
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-            }
-            .navigationDestination(for: SettingsRoute.self) { _ in
-                SettingsTab()
-            }
-            .navigationDestination(for: Meeting.self) { meeting in
-                NotepadView(meeting: meeting)
-            }
-            .task { await vm.onAppear() }
-            .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
-                if let meeting = sheetMeeting {
-                    NewNoteSheet(meeting: meeting)
-                }
-            }
-            .fullScreenCover(isPresented: $showChat) {
-                if let conv = chatConversation {
-                    AIChatView(
-                        conversation: conv,
-                        initialPrompt: chatInitialPrompt
-                    )
-                }
-            }
-        }
-        .offset(x: showChatDrawer ? 280 : 0)
-        .overlay {
-            if showChatDrawer {
-                Color.white.opacity(0.15)
-                    .ignoresSafeArea()
-                    .onTapGesture { toggleChatDrawer() }
-            }
-        }
-
-        if showChatDrawer {
+        DrawerContainer(isOpen: $showChatDrawer) {
             ChatDrawerView(
                 currentConversation: nil,
                 onSelect: { conv in
-                    toggleChatDrawer()
+                    showChatDrawer = false
                     chatConversation = conv
                     chatInitialPrompt = nil
                     showChat = true
                 },
                 onNewChat: {
-                    toggleChatDrawer()
+                    showChatDrawer = false
                     let context = HomeViewModel.recentContext(from: meetings)
                     let conv = ChatConversation(meetingsContext: context)
                     modelContext.insert(conv)
@@ -106,20 +37,68 @@ struct HomeTab: View {
                     showChat = true
                 }
             )
-            .transition(.move(edge: .leading))
-        }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showChatDrawer)
-    }
+        } content: {
+            NavigationStack(path: $navigationPath) {
+                ZStack(alignment: .bottom) {
+                    List {
+                        HistorySection(meetings: meetings, onSelect: { meeting in
+                            guard navigationPath.isEmpty else { return }
+                            navigationPath.append(meeting)
+                        }, onDelete: { meeting in
+                            modelContext.delete(meeting)
+                            try? modelContext.save()
+                        })
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .contentMargins(.top, 12)
+                    .contentMargins(.bottom, 120)
+                    .onTapGesture { askFocused = false }
 
-    private func openChatDrawer() {
-        Haptic.impact(.light)
-        toggleChatDrawer()
-    }
-
-    private func toggleChatDrawer() {
-        showChatDrawer.toggle()
-        if showChatDrawer { askFocused = false }
+                    floatingBar
+                }
+                .background(AppTheme.background.ignoresSafeArea())
+                .navigationTitle("Minto")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            Haptic.impact(.light)
+                            showChatDrawer = true
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            navigationPath.append(SettingsRoute())
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                    }
+                }
+                .navigationDestination(for: SettingsRoute.self) { _ in
+                    SettingsTab()
+                }
+                .navigationDestination(for: Meeting.self) { meeting in
+                    NotepadView(meeting: meeting)
+                }
+                .task { await vm.onAppear() }
+                .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
+                    if let meeting = sheetMeeting {
+                        NewNoteSheet(meeting: meeting)
+                    }
+                }
+                .fullScreenCover(isPresented: $showChat) {
+                    if let conv = chatConversation {
+                        AIChatView(
+                            conversation: conv,
+                            initialPrompt: chatInitialPrompt
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private func createQuickNote() {
@@ -178,10 +157,12 @@ private extension HomeTab {
             .allowsHitTesting(false)
 
             // Bar content — opaque background
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
                 if askFocused {
-                    quickPromptsTray
-                        .transition(
+                    PromptsTray(prompts: Prompt.home) { p in
+                        navigateToChat(prompt: p.prompt)
+                    }
+                    .transition(
                             .asymmetric(
                                 insertion: .push(from: .bottom).combined(with: .opacity),
                                 removal: .push(from: .top).combined(with: .opacity)
@@ -223,17 +204,4 @@ private extension HomeTab {
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
     }
 
-    var quickPromptsTray: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(HomeViewModel.quickPrompts.prefix(3)) { p in
-                    QuickPromptPill(prompt: p) {
-                        navigateToChat(prompt: p.prompt)
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.bottom, 5)
-        }
-    }
 }

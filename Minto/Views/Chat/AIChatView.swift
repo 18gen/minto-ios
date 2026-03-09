@@ -5,7 +5,7 @@ struct AIChatView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var vm: AIChatViewModel
+    @State private var vm: AIChatViewModel
     @FocusState private var inputFocused: Bool
     @State private var isAtBottom = true
     @State private var showDrawer = false
@@ -13,13 +13,24 @@ struct AIChatView: View {
     private let initialPrompt: String?
 
     init(conversation: ChatConversation, initialPrompt: String? = nil) {
-        self._vm = StateObject(wrappedValue: AIChatViewModel(conversation: conversation))
+        self._vm = State(wrappedValue: AIChatViewModel(conversation: conversation))
         self.initialPrompt = initialPrompt
     }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            // Main chat content
+        DrawerContainer(isOpen: $showDrawer) {
+            ChatDrawerView(
+                currentConversation: vm.conversation,
+                onSelect: { conv in
+                    vm.switchConversation(conv)
+                    showDrawer = false
+                },
+                onNewChat: {
+                    createNewChat()
+                    showDrawer = false
+                }
+            )
+        } content: {
             NavigationStack {
                 chatContent
                     .navigationTitle(vm.conversation.title == "New Chat" ? "AI Assistant" : vm.conversation.title)
@@ -28,7 +39,7 @@ struct AIChatView: View {
                         ToolbarItem(placement: .navigationBarLeading) {
                             Button {
                                 Haptic.impact(.light)
-                                toggleDrawer()
+                                showDrawer = true
                             } label: {
                                 Image(systemName: "line.3.horizontal")
                             }
@@ -43,34 +54,8 @@ struct AIChatView: View {
                         }
                     }
             }
-            .offset(x: showDrawer ? 280 : 0)
-            .overlay {
-                if showDrawer {
-                    Color.white.opacity(0.15)
-                        .ignoresSafeArea()
-                        .onTapGesture { toggleDrawer() }
-                }
-            }
-
-            // Drawer
-            if showDrawer {
-                ChatDrawerView(
-                    currentConversation: vm.conversation,
-                    onSelect: { conv in
-                        vm.switchConversation(conv)
-                        toggleDrawer()
-                    },
-                    onNewChat: {
-                        createNewChat()
-                        toggleDrawer()
-                    }
-                )
-                .transition(.move(edge: .leading))
-            }
         }
         .background(AppTheme.background.ignoresSafeArea())
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showDrawer)
-        .gesture(drawerDragGesture)
         .task {
             if let prompt = initialPrompt {
                 await vm.sendInitialPrompt(prompt)
@@ -165,25 +150,9 @@ struct AIChatView: View {
         }
     }
 
-    private func toggleDrawer() {
-        showDrawer.toggle()
-        if showDrawer { inputFocused = false }
-    }
-
     private func createNewChat() {
         let conv = ChatConversation(meetingsContext: vm.conversation.meetingsContext)
         modelContext.insert(conv)
         vm.switchConversation(conv)
-    }
-
-    private var drawerDragGesture: some Gesture {
-        DragGesture(minimumDistance: 30)
-            .onEnded { value in
-                if value.translation.width > 80, !showDrawer {
-                    toggleDrawer()
-                } else if value.translation.width < -80, showDrawer {
-                    toggleDrawer()
-                }
-            }
     }
 }
