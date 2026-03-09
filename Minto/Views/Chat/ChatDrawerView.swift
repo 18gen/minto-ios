@@ -38,8 +38,7 @@ struct ChatDrawerView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        let grouped = groupedConversations
-                        ForEach(grouped, id: \.label) { group in
+                        ForEach(ChatConversation.grouped(conversations), id: \.label) { group in
                             Text(group.label)
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
@@ -90,7 +89,7 @@ struct ChatDrawerView: View {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(conv.title)
-                        .font(.subheadline)
+                        .font(.headline)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
@@ -115,44 +114,6 @@ struct ChatDrawerView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-    }
-
-    // MARK: - Grouping
-
-    private struct ConversationGroup {
-        let label: String
-        let conversations: [ChatConversation]
-    }
-
-    private var groupedConversations: [ConversationGroup] {
-        let calendar = Calendar.current
-        let now = Date.now
-
-        var today: [ChatConversation] = []
-        var yesterday: [ChatConversation] = []
-        var thisWeek: [ChatConversation] = []
-        var older: [ChatConversation] = []
-
-        for conv in conversations {
-            if calendar.isDateInToday(conv.updatedAt) {
-                today.append(conv)
-            } else if calendar.isDateInYesterday(conv.updatedAt) {
-                yesterday.append(conv)
-            } else if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now),
-                      conv.updatedAt > weekAgo
-            {
-                thisWeek.append(conv)
-            } else {
-                older.append(conv)
-            }
-        }
-
-        var groups: [ConversationGroup] = []
-        if !today.isEmpty { groups.append(.init(label: "Today", conversations: today)) }
-        if !yesterday.isEmpty { groups.append(.init(label: "Yesterday", conversations: yesterday)) }
-        if !thisWeek.isEmpty { groups.append(.init(label: "This Week", conversations: thisWeek)) }
-        if !older.isEmpty { groups.append(.init(label: "Older", conversations: older)) }
-        return groups
     }
 
     private func relativeTime(_ date: Date) -> String {

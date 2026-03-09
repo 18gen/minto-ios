@@ -32,3 +32,43 @@ final class ChatConversation {
         }
     }
 }
+
+// MARK: - Grouping
+
+struct ConversationGroup {
+    let label: String
+    let conversations: [ChatConversation]
+}
+
+extension ChatConversation {
+    static func grouped(_ conversations: [ChatConversation]) -> [ConversationGroup] {
+        let calendar = Calendar.current
+        let now = Date.now
+
+        var today: [ChatConversation] = []
+        var yesterday: [ChatConversation] = []
+        var thisWeek: [ChatConversation] = []
+        var older: [ChatConversation] = []
+
+        for conv in conversations {
+            if calendar.isDateInToday(conv.updatedAt) {
+                today.append(conv)
+            } else if calendar.isDateInYesterday(conv.updatedAt) {
+                yesterday.append(conv)
+            } else if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now),
+                      conv.updatedAt > weekAgo
+            {
+                thisWeek.append(conv)
+            } else {
+                older.append(conv)
+            }
+        }
+
+        var groups: [ConversationGroup] = []
+        if !today.isEmpty { groups.append(.init(label: "Today", conversations: today)) }
+        if !yesterday.isEmpty { groups.append(.init(label: "Yesterday", conversations: yesterday)) }
+        if !thisWeek.isEmpty { groups.append(.init(label: "This Week", conversations: thisWeek)) }
+        if !older.isEmpty { groups.append(.init(label: "Older", conversations: older)) }
+        return groups
+    }
+}
