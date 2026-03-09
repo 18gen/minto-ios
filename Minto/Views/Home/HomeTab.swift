@@ -12,8 +12,13 @@ struct HomeTab: View {
 
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
+    @State private var showChat = false
+    @State private var chatConversation: ChatConversation?
+    @State private var chatInitialPrompt: String?
+    @State private var showChatDrawer = false
 
     var body: some View {
+        ZStack(alignment: .leading) {
         NavigationStack(path: $navigationPath) {
             ZStack(alignment: .bottom) {
                 List {
@@ -37,6 +42,13 @@ struct HomeTab: View {
             .navigationTitle("Minto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        openChatDrawer()
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         navigationPath.append(SettingsRoute())
@@ -51,16 +63,63 @@ struct HomeTab: View {
             .navigationDestination(for: Meeting.self) { meeting in
                 NotepadView(meeting: meeting)
             }
-            .navigationDestination(for: ChatDestination.self) { dest in
-                AIChatView(initialPrompt: dest.initialPrompt, meetingsContext: dest.meetingsContext)
-            }
             .task { await vm.onAppear() }
             .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
                 if let meeting = sheetMeeting {
                     NewNoteSheet(meeting: meeting)
                 }
             }
+            .fullScreenCover(isPresented: $showChat) {
+                if let conv = chatConversation {
+                    AIChatView(
+                        conversation: conv,
+                        initialPrompt: chatInitialPrompt
+                    )
+                }
+            }
         }
+        .offset(x: showChatDrawer ? 280 : 0)
+        .overlay {
+            if showChatDrawer {
+                Color.white.opacity(0.15)
+                    .ignoresSafeArea()
+                    .onTapGesture { toggleChatDrawer() }
+            }
+        }
+
+        if showChatDrawer {
+            ChatDrawerView(
+                currentConversation: nil,
+                onSelect: { conv in
+                    toggleChatDrawer()
+                    chatConversation = conv
+                    chatInitialPrompt = nil
+                    showChat = true
+                },
+                onNewChat: {
+                    toggleChatDrawer()
+                    let context = HomeViewModel.recentContext(from: meetings)
+                    let conv = ChatConversation(meetingsContext: context)
+                    modelContext.insert(conv)
+                    chatConversation = conv
+                    chatInitialPrompt = nil
+                    showChat = true
+                }
+            )
+            .transition(.move(edge: .leading))
+        }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: showChatDrawer)
+    }
+
+    private func openChatDrawer() {
+        Haptic.impact(.light)
+        toggleChatDrawer()
+    }
+
+    private func toggleChatDrawer() {
+        showChatDrawer.toggle()
+        if showChatDrawer { askFocused = false }
     }
 
     private func createQuickNote() {
@@ -79,7 +138,12 @@ struct HomeTab: View {
         let context = HomeViewModel.recentContext(from: meetings)
         vm.askText = ""
         askFocused = false
-        navigationPath.append(ChatDestination(initialPrompt: text, meetingsContext: context))
+
+        let conv = ChatConversation(meetingsContext: context)
+        modelContext.insert(conv)
+        chatConversation = conv
+        chatInitialPrompt = text
+        showChat = true
     }
 
     private func handleSheetDismiss() {

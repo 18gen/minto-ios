@@ -7,7 +7,7 @@ final class AIChatViewModel: ObservableObject {
     @Published var inputText = ""
     @Published var isResponding = false
 
-    private let meetingsContext: String
+    private(set) var conversation: ChatConversation
     private let claudeService = ClaudeService.shared
 
     private var systemPrompt: String {
@@ -17,23 +17,26 @@ final class AIChatViewModel: ObservableObject {
         情報が不足している場合は、その旨を伝えてください。
 
         以下はユーザーの最近の会議データです:
-        \(meetingsContext)
+        \(conversation.meetingsContext)
         """
     }
 
-    init(meetingsContext: String) {
-        self.meetingsContext = meetingsContext
+    init(conversation: ChatConversation) {
+        self.conversation = conversation
+        self.messages = conversation.messages
+    }
+
+    /// Switch to a different conversation (from drawer selection).
+    func switchConversation(_ newConversation: ChatConversation) {
+        conversation = newConversation
+        messages = newConversation.messages
+        inputText = ""
+        isResponding = false
     }
 
     func sendInitialPrompt(_ prompt: String) async {
+        guard messages.isEmpty else { return }
         await send(prompt)
-    }
-
-    func sendFollowUp() async {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        inputText = ""
-        await send(text)
     }
 
     func sendMessage(_ text: String) async {
@@ -46,10 +49,18 @@ final class AIChatViewModel: ObservableObject {
         let userMsg = ChatMessage(role: .user, content: text)
         messages.append(userMsg)
 
+        // Auto-title from first user message
+        if conversation.title == "New Chat" {
+            conversation.title = String(text.prefix(40))
+        }
+
         let thinkingId = UUID()
         let thinkingMsg = ChatMessage(id: thinkingId, role: .assistant, content: "", isLoading: true)
         messages.append(thinkingMsg)
         isResponding = true
+
+        // Save user message immediately
+        persistMessages()
 
         let apiMessages = messages
             .filter { !$0.isLoading }
@@ -72,5 +83,10 @@ final class AIChatViewModel: ObservableObject {
         }
 
         isResponding = false
+        persistMessages()
+    }
+
+    private func persistMessages() {
+        conversation.messages = messages.filter { !$0.isLoading }
     }
 }
