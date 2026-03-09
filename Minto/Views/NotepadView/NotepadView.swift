@@ -6,11 +6,7 @@ struct NotepadView: View {
     @Bindable var meeting: Meeting
 
     @State private var currentPage: NotePage = .notes
-    @State private var isAugmenting = false
-    @State private var augmentError: String?
     @FocusState private var notesFocused: Bool
-
-    private let claudeService = ClaudeService.shared
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -45,14 +41,6 @@ private extension NotepadView {
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 8)
-
-            if let augmentError {
-                Text(augmentError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
-            }
         }
         .padding(.bottom, 54)
     }
@@ -94,10 +82,6 @@ private extension NotepadView {
         return parts.joined(separator: "\n\n")
     }
 
-    var isGenerateDisabled: Bool {
-        meeting.rawTranscript.isEmpty && meeting.userNotes.isEmpty
-    }
-
     var dateBadgeText: String {
         let cal = Calendar.current
         if cal.isDateInToday(meeting.startDate) { return "Today" }
@@ -106,26 +90,3 @@ private extension NotepadView {
     }
 }
 
-// MARK: - Actions
-
-private extension NotepadView {
-    func augment() async {
-        isAugmenting = true
-        augmentError = nil
-        meeting.status = "augmenting"
-
-        do {
-            meeting.augmentedNotes = try await claudeService.augmentNotes(
-                userNotes: meeting.userNotes,
-                transcript: meeting.rawTranscript,
-                toneMode: meeting.toneMode
-            )
-            meeting.status = "done"
-        } catch {
-            augmentError = error.localizedDescription
-            meeting.status = meeting.rawTranscript.isEmpty ? "idle" : "done"
-        }
-
-        isAugmenting = false
-    }
-}

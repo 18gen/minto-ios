@@ -14,14 +14,4 @@ enum AudioConversion {
         }
         return data
     }
-
-    /// Convert Float32 samples to an Int16 array (for Eagle SDK).
-    static func float32ToInt16Array(_ samples: UnsafePointer<Float>, count: Int) -> [Int16] {
-        var result = [Int16](repeating: 0, count: count)
-        for i in 0..<count {
-            let clamped = max(-1.0, min(1.0, samples[i]))
-            result[i] = Int16(clamped * Float(Int16.max))
-        }
-        return result
-    }
 }

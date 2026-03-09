@@ -37,7 +37,4 @@ enum AppTheme {
     // prompt pill color rotation
     static let promptColors: [Color] = [primary, .green, .cyan]
 
-    // sizing
-    static let barCorner: CGFloat = 26
-    static let pillCorner: CGFloat = 999
 }
