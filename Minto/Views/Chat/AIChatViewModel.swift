@@ -1,11 +1,10 @@
-import Combine
 import SwiftUI
 
-@MainActor
-final class AIChatViewModel: ObservableObject {
-    @Published var messages: [ChatMessage] = []
-    @Published var inputText = ""
-    @Published var isResponding = false
+@Observable @MainActor
+final class AIChatViewModel {
+    var messages: [ChatMessage] = []
+    var inputText = ""
+    var isResponding = false
 
     private(set) var conversation: ChatConversation
     private let claudeService = ClaudeService.shared
