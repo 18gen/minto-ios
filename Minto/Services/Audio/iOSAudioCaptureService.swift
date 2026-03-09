@@ -1,8 +1,10 @@
 import Accelerate
 import AVFoundation
 import Foundation
+import os.log
 
 final class iOSAudioCaptureService: @unchecked Sendable {
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Minto", category: "AudioCapture")
     private let lock = NSLock()
 
     private var engine: AVAudioEngine?
@@ -48,6 +50,8 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         lock.withLock { _hasReceivedNonSilence }
     }
 
+    private var _isReinstallingTap = false
+
     func startCapture() async throws {
         lock.withLock {
             _hasReceivedNonSilence = false
@@ -57,51 +61,20 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         }
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [
+            .mixWithOthers, .defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP,
+        ])
         try session.setActive(true)
 
         let engine = AVAudioEngine()
-        let inputNode = engine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
+        let inputFormat = installTap(on: engine)
 
-        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+        guard let inputFormat else {
             throw CaptureError.noMicrophone
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
-            guard let self else { return }
-            if let converted = self.convertBuffer(buffer) {
-                let frameCount = Int(converted.frameLength)
-                if frameCount > 0, let ptr = converted.floatChannelData?[0] {
-                    let samplesArray = Array(UnsafeBufferPointer(start: ptr, count: frameCount))
-
-                    var rms: Float = 0.0
-                    vDSP_rmsqv(ptr, 1, &rms, vDSP_Length(frameCount))
-                    let normalizedLevel = min(rms * 3.0, 1.0)
-
-                    self.lock.withLock {
-                        self._currentAudioLevel = normalizedLevel
-                        if !self._hasReceivedNonSilence, rms > 0.0001 {
-                            self._hasReceivedNonSilence = true
-                        }
-                    }
-
-                    // Stream raw Int16 PCM for Deepgram
-                    if let pcmCallback = self.onRawPCMReady {
-                        let int16Data = Self.float32ToInt16PCM(samplesArray)
-                        pcmCallback(int16Data)
-                    }
-
-                    if self.lock.withLock({ self._shouldAccumulateFullRecording }) {
-                        self.lock.withLock {
-                            self.fullRecordingSamples.append(contentsOf: samplesArray)
-                        }
-                    }
-
-                    self.accumulateSamples(samplesArray)
-                }
-            }
-        }
+        Self.log.info("Capture started — input: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount)ch")
+        Self.logCurrentRoute()
 
         try engine.start()
         lock.withLock {
@@ -129,6 +102,87 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         }
     }
 
+    // MARK: - Tap Installation
+
+    /// Installs an audio tap on the engine's input node. Returns the input format, or nil if no mic.
+    @discardableResult
+    private func installTap(on engine: AVAudioEngine) -> AVAudioFormat? {
+        let inputNode = engine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            return nil
+        }
+
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+            guard let self else { return }
+            if let converted = self.convertBuffer(buffer) {
+                let frameCount = Int(converted.frameLength)
+                if frameCount > 0, let ptr = converted.floatChannelData?[0] {
+                    let samplesArray = Array(UnsafeBufferPointer(start: ptr, count: frameCount))
+
+                    var rms: Float = 0.0
+                    vDSP_rmsqv(ptr, 1, &rms, vDSP_Length(frameCount))
+                    let normalizedLevel = min(rms * 3.0, 1.0)
+
+                    self.lock.withLock {
+                        self._currentAudioLevel = normalizedLevel
+                        if !self._hasReceivedNonSilence, rms > 0.0001 {
+                            self._hasReceivedNonSilence = true
+                        }
+                    }
+
+                    // Stream raw Int16 PCM for Deepgram / ElevenLabs
+                    if let pcmCallback = self.onRawPCMReady {
+                        let int16Data = Self.float32ToInt16PCM(samplesArray)
+                        pcmCallback(int16Data)
+                    }
+
+                    if self.lock.withLock({ self._shouldAccumulateFullRecording }) {
+                        self.lock.withLock {
+                            self.fullRecordingSamples.append(contentsOf: samplesArray)
+                        }
+                    }
+
+                    self.accumulateSamples(samplesArray)
+                }
+            }
+        }
+
+        return inputFormat
+    }
+
+    /// Stops engine, removes tap, invalidates converter, reinstalls tap with new format, restarts.
+    /// Safe to call from any thread. Guarded against concurrent execution.
+    private func reinstallTap() {
+        let shouldProceed = lock.withLock {
+            guard !_isReinstallingTap else { return false }
+            _isReinstallingTap = true
+            return true
+        }
+        guard shouldProceed else { return }
+        defer { lock.withLock { _isReinstallingTap = false } }
+
+        let eng = lock.withLock { engine }
+        guard let eng else { return }
+
+        eng.stop()
+        eng.inputNode.removeTap(onBus: 0)
+        lock.withLock { cachedConverter = nil }
+
+        try? AVAudioSession.sharedInstance().setActive(true)
+        installTap(on: eng)
+        Self.logCurrentRoute()
+
+        do {
+            try eng.start()
+        } catch {
+            Self.log.error("Failed to restart engine after route change: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Session Event Handling
+
     private func handleInterruption(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
@@ -136,12 +190,10 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
         switch type {
         case .began:
-            // Engine is paused by the system — nothing to do here
-            break
+            Self.log.info("Audio session interrupted")
 
         case .ended:
-            // Always attempt to restart — don't gate on .shouldResume
-            // iOS may not set that flag for background transitions
+            Self.log.info("Audio session interruption ended — restarting")
             let eng = lock.withLock { engine }
             guard let eng else { return }
             try? AVAudioSession.sharedInstance().setActive(true)
@@ -157,13 +209,25 @@ final class iOSAudioCaptureService: @unchecked Sendable {
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
-        // Restart engine when a device is removed (e.g. Bluetooth headset disconnects)
-        if reason == .oldDeviceUnavailable {
-            let eng = lock.withLock { engine }
-            guard let eng else { return }
-            try? AVAudioSession.sharedInstance().setActive(true)
-            try? eng.start()
+        switch reason {
+        case .newDeviceAvailable:
+            Self.log.info("Audio route: new device available — reinstalling tap")
+            reinstallTap()
+        case .oldDeviceUnavailable:
+            Self.log.info("Audio route: device removed — reinstalling tap")
+            reinstallTap()
+        default:
+            break
         }
+    }
+
+    // MARK: - Route Logging
+
+    private static func logCurrentRoute() {
+        let route = AVAudioSession.sharedInstance().currentRoute
+        let inputs = route.inputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", ")
+        let outputs = route.outputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", ")
+        log.info("Audio route — in: [\(inputs)] out: [\(outputs)]")
     }
 
     func stopCapture() async {
