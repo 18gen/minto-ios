@@ -13,7 +13,7 @@ struct ChatBubble: View {
                 Spacer(minLength: 60)
 
                 Text(message.content)
-                    .font(.system(size: 16))
+                    .font(.system(size: 15))
                     .foregroundStyle(.white)
                     .textSelection(.enabled)
                     .padding(.horizontal, 14)
@@ -32,6 +32,7 @@ struct ChatBubble: View {
                 } else {
                     Markdown(message.content)
                         .textSelection(.enabled)
+                        .font(.system(size: 15))
 
                     Button {
                         UIPasteboard.general.string = message.content
