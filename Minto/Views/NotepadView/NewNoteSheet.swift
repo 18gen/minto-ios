@@ -222,7 +222,7 @@ private extension NewNoteSheet {
 private extension NewNoteSheet {
     func startRecording() {
         Task {
-            await coordinator.startRecording(meeting: meeting, modelContext: modelContext)
+            await coordinator.startRecording(meeting: meeting)
             if coordinator.isRecording {
                 recordingPhase = .recording
             }
@@ -239,7 +239,7 @@ private extension NewNoteSheet {
 
     func resumeRecording() {
         Task {
-            await coordinator.startRecording(meeting: meeting, modelContext: modelContext)
+            await coordinator.startRecording(meeting: meeting)
             if coordinator.isRecording {
                 recordingPhase = .recording
             }

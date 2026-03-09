@@ -1,8 +1,6 @@
-import SwiftData
 import SwiftUI
 
 struct NotepadBottomBar: View {
-    @Environment(\.modelContext) private var modelContext
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
     var isNotepadEditing: Bool = false
@@ -82,7 +80,7 @@ struct NotepadBottomBar: View {
                 if coordinator.isRecording {
                     await coordinator.stopRecording()
                 } else {
-                    await coordinator.startRecording(meeting: meeting, modelContext: modelContext)
+                    await coordinator.startRecording(meeting: meeting)
                 }
             }
         }
