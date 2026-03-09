@@ -16,7 +16,7 @@ struct NotepadView: View {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
                 content
             }
-            overlay
+            NotepadBottomBar(meeting: meeting, currentPage: $currentPage)
         }
         .background(AppTheme.background)
         .navigationBarTitleDisplayMode(.inline)
@@ -48,7 +48,7 @@ private extension NotepadView {
                     .padding(.bottom, 4)
             }
         }
-        .padding(.bottom, 100)
+        .padding(.bottom, 72)
     }
 
     var metadataRow: some View {
@@ -65,12 +65,6 @@ private extension NotepadView {
                 Spacer()
             }
         }
-    }
-
-    var overlay: some View {
-        NotepadBottomBar(meeting: meeting, currentPage: $currentPage)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
     }
 
     @ToolbarContentBuilder
