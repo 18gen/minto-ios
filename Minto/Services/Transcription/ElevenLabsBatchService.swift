@@ -47,13 +47,13 @@ actor ElevenLabsBatchService {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()
-        body.appendField(boundary: boundary, name: "file",
-                         filename: audioFileURL.lastPathComponent,
-                         mimeType: "audio/wav", data: audioData)
-        body.appendField(boundary: boundary, name: "model_id", value: "scribe_v2")
-        body.appendField(boundary: boundary, name: "language_code", value: "ja")
-        body.appendField(boundary: boundary, name: "diarize", value: "true")
-        body.appendField(boundary: boundary, name: "timestamps_granularity", value: "word")
+        body.appendMultipartField(boundary: boundary, name: "file",
+                                  filename: audioFileURL.lastPathComponent,
+                                  mimeType: "audio/wav", data: audioData)
+        body.appendMultipartField(boundary: boundary, name: "model_id", value: "scribe_v2")
+        body.appendMultipartField(boundary: boundary, name: "language_code", value: "ja")
+        body.appendMultipartField(boundary: boundary, name: "diarize", value: "true")
+        body.appendMultipartField(boundary: boundary, name: "timestamps_granularity", value: "word")
         body.append(Data("--\(boundary)--\r\n".utf8))
 
         request.httpBody = body
@@ -106,22 +106,4 @@ private struct ResponseUtterance: Decodable {
     let start: Double
     let end: Double
     let speaker_id: String?
-}
-
-// MARK: - Multipart Helpers
-
-private extension Data {
-    mutating func appendField(boundary: String, name: String, filename: String, mimeType: String, data: Data) {
-        append(Data("--\(boundary)\r\n".utf8))
-        append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
-        append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
-        append(data)
-        append(Data("\r\n".utf8))
-    }
-
-    mutating func appendField(boundary: String, name: String, value: String) {
-        append(Data("--\(boundary)\r\n".utf8))
-        append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
-        append(Data("\(value)\r\n".utf8))
-    }
 }

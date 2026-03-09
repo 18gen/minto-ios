@@ -39,10 +39,10 @@ actor WhisperService {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()
-        body.appendMultipart(boundary: boundary, name: "file", filename: "audio.wav", mimeType: "audio/wav", data: audioData)
-        body.appendMultipart(boundary: boundary, name: "model", value: "whisper-1")
-        body.appendMultipart(boundary: boundary, name: "language", value: "ja")
-        body.appendMultipart(boundary: boundary, name: "response_format", value: "verbose_json")
+        body.appendMultipartField(boundary: boundary, name: "file", filename: "audio.wav", mimeType: "audio/wav", data: audioData)
+        body.appendMultipartField(boundary: boundary, name: "model", value: "whisper-1")
+        body.appendMultipartField(boundary: boundary, name: "language", value: "ja")
+        body.appendMultipartField(boundary: boundary, name: "response_format", value: "verbose_json")
         body.append(Data("--\(boundary)--\r\n".utf8))
         request.httpBody = body
 
@@ -62,21 +62,5 @@ actor WhisperService {
         } catch {
             throw WhisperError.decodingError(error.localizedDescription)
         }
-    }
-}
-
-private extension Data {
-    nonisolated mutating func appendMultipart(boundary: String, name: String, filename: String, mimeType: String, data: Data) {
-        append(Data("--\(boundary)\r\n".utf8))
-        append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
-        append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
-        append(data)
-        append(Data("\r\n".utf8))
-    }
-
-    nonisolated mutating func appendMultipart(boundary: String, name: String, value: String) {
-        append(Data("--\(boundary)\r\n".utf8))
-        append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
-        append(Data("\(value)\r\n".utf8))
     }
 }
