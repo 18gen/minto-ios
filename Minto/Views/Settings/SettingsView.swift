@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-struct SettingsTab: View {
+struct SettingsView: View {
     @State private var settings = AppSettings.shared
     @Query private var speakerProfiles: [SpeakerProfile]
 

@@ -84,7 +84,7 @@ struct HomeTab: View {
                     }
                 }
                 .navigationDestination(for: SettingsRoute.self) { _ in
-                    SettingsTab()
+                    SettingsView()
                 }
                 .navigationDestination(for: Meeting.self) { meeting in
                     NotepadView(meeting: meeting)
