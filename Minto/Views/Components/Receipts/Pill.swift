@@ -21,41 +21,20 @@ struct PillButtonStyle: ButtonStyle {
 }
 
 struct SlashBadge: View {
-    enum Style {
-        case mint
-        case green
-        case cyan
-        case gray
+    let color: Color
 
-        var fill: Color {
-            switch self {
-            case .mint: AppTheme.primary.opacity(0.22)
-            case .green: Color.green.opacity(0.22)
-            case .cyan: Color.cyan.opacity(0.22)
-            case .gray: Color.primary.opacity(0.10)
-            }
-        }
-
-        var slash: Color {
-            switch self {
-            case .mint: AppTheme.primary
-            case .green: .green
-            case .cyan: .cyan
-            case .gray: .secondary
-            }
-        }
+    init(color: Color = AppTheme.primary) {
+        self.color = color
     }
-
-    var style: Style = .mint
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(style.fill)
+                .fill(color.opacity(0.22))
                 .frame(width: 22, height: 22)
             Text("/")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(style.slash)
+                .foregroundStyle(color)
                 .offset(y: -0.5)
         }
     }

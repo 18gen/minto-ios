@@ -10,8 +10,6 @@ enum AppTheme {
     // recording capsule
     static let creamCTA = Color(red: 0.93, green: 0.90, blue: 0.85)
     static let darkCapsule = Color(white: 0.12)
-    static let recordingGreen = Color(red: 0.65, green: 0.80, blue: 0.30)
-    static let pausedDots = Color(white: 0.45)
 
     // speaker diarization
     static let speakerColors: [Color] = [
@@ -30,12 +28,14 @@ enum AppTheme {
     static let surfaceFill = Color(white: 0.15)
     static let inputFill = Color(white: 0.15)
     static let surfaceStroke = Color.white.opacity(0.10)
-    static let surfaceStrokeStrong = Color.white.opacity(0.16)
 
     // text
     static let textPrimary: Color = .primary
     static let textSecondary: Color = .secondary
     static let textTertiary: Color = .primary.opacity(0.45)
+
+    // prompt pill color rotation
+    static let promptColors: [Color] = [primary, .green, .cyan]
 
     // sizing
     static let barCorner: CGFloat = 26
