@@ -11,7 +11,35 @@ struct NotepadBottomBar: View {
     @FocusState private var askFocused: Bool
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
+            recordingStatus
+
+            FloatingBar(
+                prompts: Prompt.notepad,
+                askText: $askVM.askText,
+                isAsking: $askVM.isAsking,
+                askFocus: $askFocused,
+                onSend: {
+                    Task { await askVM.askQuestion(userNotes: meeting.userNotes, transcript: meeting.rawTranscript) }
+                },
+                onPromptSelect: { p in
+                    askVM.askText = p.prompt
+                    askFocused = true
+                }
+            ) {
+                recordingCapsule
+            }
+        }
+        .sheet(isPresented: $askVM.showAskSheet) {
+            askSheetContent
+        }
+    }
+
+    // MARK: - Recording Status
+
+    @ViewBuilder
+    private var recordingStatus: some View {
+        VStack(spacing: 6) {
             if let error = coordinator.recordingError {
                 Text(error)
                     .font(.caption2)
@@ -28,50 +56,8 @@ struct NotepadBottomBar: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            VStack(spacing: 10) {
-                if askFocused {
-                    PromptsTray(prompts: Prompt.notepad) { p in
-                        askVM.askText = p.prompt
-                        askFocused = true
-                    }
-                    .transition(
-                        .asymmetric(
-                            insertion: .push(from: .bottom).combined(with: .opacity),
-                            removal: .push(from: .top).combined(with: .opacity)
-                        )
-                    )
-                }
-
-                HStack(spacing: 10) {
-                    AskBar(
-                        text: $askVM.askText,
-                        isAsking: $askVM.isAsking,
-                        focus: $askFocused,
-                        placeholder: "Ask anything",
-                        onSend: {
-                            Task { await askVM.askQuestion(userNotes: meeting.userNotes, transcript: meeting.rawTranscript) }
-                        }
-                    )
-
-                    if !askFocused {
-                        recordingCapsule
-                    }
-                }
-            }
-            .padding(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.barCorner, style: .continuous)
-                    .strokeBorder(
-                        askFocused ? AppTheme.primary : Color.clear,
-                        lineWidth: askFocused ? 1.5 : 0
-                    )
-            )
-            .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
         }
-        .sheet(isPresented: $askVM.showAskSheet) {
-            askSheetContent
-        }
+        .padding(.horizontal, 16)
     }
 
     // MARK: - Recording Capsule

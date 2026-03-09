@@ -55,7 +55,27 @@ struct HomeView: View {
                     .contentMargins(.bottom, 120)
                     .onTapGesture { askFocused = false }
 
-                    floatingBar
+                    FloatingBar(
+                        prompts: Prompt.home,
+                        askText: $vm.askText,
+                        isAsking: $vm.isAsking,
+                        askFocus: $askFocused,
+                        onSend: { navigateToChat(prompt: vm.askText) },
+                        onPromptSelect: { navigateToChat(prompt: $0.prompt) }
+                    ) {
+                        Button { createQuickNote() } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(Color.white)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(AppTheme.accent))
+                                .overlay(
+                                    Circle()
+                                        .stroke(AppTheme.surfaceStroke, lineWidth: 1)
+                                        .blendMode(.overlay)
+                                )
+                        }
+                    }
                 }
                 .background(AppTheme.background.ignoresSafeArea())
                 .navigationTitle("Minto")
@@ -143,65 +163,3 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Floating Bar
-
-private extension HomeView {
-    var floatingBar: some View {
-        VStack(spacing: 0) {
-            // Gradient fade — no background behind this, so .clear shows List content
-            LinearGradient(
-                colors: [.clear, AppTheme.background],
-                startPoint: .top, endPoint: .bottom
-            )
-            .frame(height: 20)
-            .allowsHitTesting(false)
-
-            // Bar content — opaque background
-            VStack(alignment: .leading, spacing: 10) {
-                if askFocused {
-                    PromptsTray(prompts: Prompt.home) { p in
-                        navigateToChat(prompt: p.prompt)
-                    }
-                    .transition(
-                            .asymmetric(
-                                insertion: .push(from: .bottom).combined(with: .opacity),
-                                removal: .push(from: .top).combined(with: .opacity)
-                            )
-                        )
-                }
-
-                HStack(spacing: 10) {
-                    AskBar(
-                        text: $vm.askText,
-                        isAsking: $vm.isAsking,
-                        focus: $askFocused,
-                        placeholder: "Ask anything",
-                        onSend: { navigateToChat(prompt: vm.askText) }
-                    )
-
-                    if !askFocused {
-                        Button { createQuickNote() } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(Color.white)
-                                .frame(width: 44, height: 44)
-                                .background(Circle().fill(AppTheme.accent))
-                                .overlay(
-                                    Circle()
-                                        .stroke(AppTheme.surfaceStroke, lineWidth: 1)
-                                        .blendMode(.overlay)
-                                )
-                        }
-                        .transition(.scale.combined(with: .opacity))
-                    }
-                }
-            }
-            .padding(.bottom, 10)
-            .padding(.horizontal, 16)
-            .background(AppTheme.background)
-        }
-        .ignoresSafeArea(.keyboard)
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
-    }
-
-}
