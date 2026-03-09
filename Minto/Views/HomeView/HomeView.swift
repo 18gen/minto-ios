@@ -12,7 +12,6 @@ struct HomeView: View {
 
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
-    @State private var showChat = false
     @State private var chatConversation: ChatConversation?
     @State private var chatInitialPrompt: String?
     @State private var showChatDrawer = false
@@ -23,18 +22,16 @@ struct HomeView: View {
                 currentConversation: nil,
                 onSelect: { conv in
                     showChatDrawer = false
-                    chatConversation = conv
                     chatInitialPrompt = nil
-                    showChat = true
+                    chatConversation = conv
                 },
                 onNewChat: {
                     showChatDrawer = false
                     let context = HomeViewModel.recentContext(from: meetings)
                     let conv = ChatConversation(meetingsContext: context)
                     modelContext.insert(conv)
-                    chatConversation = conv
                     chatInitialPrompt = nil
-                    showChat = true
+                    chatConversation = conv
                 }
             )
         } content: {
@@ -111,13 +108,12 @@ struct HomeView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showChat) {
-            if let conv = chatConversation {
-                ChatView(
-                    conversation: conv,
-                    initialPrompt: chatInitialPrompt
-                )
-            }
+        .fullScreenCover(item: $chatConversation) { conv in
+            ChatView(
+                conversation: conv,
+                initialPrompt: chatInitialPrompt
+            )
+            .id(conv.persistentModelID)
         }
     }
 
@@ -140,9 +136,8 @@ struct HomeView: View {
 
         let conv = ChatConversation(meetingsContext: context)
         modelContext.insert(conv)
-        chatConversation = conv
         chatInitialPrompt = text
-        showChat = true
+        chatConversation = conv
     }
 
     private func handleSheetDismiss() {
