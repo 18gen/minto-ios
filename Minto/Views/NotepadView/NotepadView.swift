@@ -8,6 +8,7 @@ struct NotepadView: View {
     @State private var currentPage: NotePage = .notes
     @State private var isAugmenting = false
     @State private var augmentError: String?
+    @FocusState private var notesFocused: Bool
 
     private let claudeService = ClaudeService.shared
 
@@ -16,7 +17,12 @@ struct NotepadView: View {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
                 content
             }
-            NotepadBottomBar(meeting: meeting, currentPage: $currentPage)
+            NotepadBottomBar(
+                meeting: meeting,
+                currentPage: $currentPage,
+                isNotepadEditing: notesFocused,
+                onDismissKeyboard: { notesFocused = false }
+            )
         }
         .background(AppTheme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
@@ -31,10 +37,10 @@ private extension NotepadView {
         VStack(spacing: 5) {
             metadataRow
                 .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 24)
+                .padding(.vertical, 10)
 
             TextEditor(text: $meeting.userNotes)
+                .focused($notesFocused)
                 .font(.system(size: 17))
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

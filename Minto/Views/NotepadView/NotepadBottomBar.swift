@@ -5,6 +5,8 @@ struct NotepadBottomBar: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
+    var isNotepadEditing: Bool = false
+    var onDismissKeyboard: (() -> Void)?
 
     private let coordinator = iOSRecordingCoordinator.shared
     @State private var askVM = NotepadAskViewModel()
@@ -27,7 +29,14 @@ struct NotepadBottomBar: View {
                     askFocused = true
                 }
             ) {
-                recordingCapsule
+                if isNotepadEditing, let onDismissKeyboard {
+                    CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
+                        onDismissKeyboard()
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                } else {
+                    recordingCapsule
+                }
             }
         }
         .sheet(isPresented: $askVM.showAskSheet) {
@@ -63,38 +72,21 @@ struct NotepadBottomBar: View {
     // MARK: - Recording Capsule
 
     private var recordingCapsule: some View {
-        HStack(spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    currentPage = currentPage == .notes ? .transcript : .notes
+        CapsuleButton(
+            icon: coordinator.isRecording ? "pause.fill" : "play.fill",
+            style: coordinator.isRecording ? .cream : .darkOutline,
+            size: .compact,
+            isLoading: coordinator.isProcessingBatch
+        ) {
+            Task {
+                if coordinator.isRecording {
+                    await coordinator.stopRecording()
+                } else {
+                    await coordinator.startRecording(meeting: meeting, modelContext: modelContext)
                 }
-            } label: {
-                Image(systemName: currentPage == .notes ? "chevron.right" : "chevron.left")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .frame(width: 24, height: 24)
             }
-
-            Button {
-                Haptic.impact(.medium)
-                Task {
-                    if coordinator.isRecording {
-                        await coordinator.stopRecording()
-                    } else {
-                        await coordinator.startRecording(meeting: meeting, modelContext: modelContext)
-                    }
-                }
-            } label: {
-                Text(coordinator.isRecording ? "Pause" : "Resume")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(coordinator.isRecording ? AppTheme.primary : AppTheme.textSecondary)
-            }
-            .disabled(coordinator.isProcessingBatch)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Capsule().fill(Color.primary.opacity(0.06)))
-        .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 1).blendMode(.overlay))
+        .disabled(coordinator.isProcessingBatch)
     }
 
     // MARK: - Ask Sheet
