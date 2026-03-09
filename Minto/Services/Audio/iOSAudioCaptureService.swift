@@ -52,13 +52,20 @@ final class iOSAudioCaptureService: @unchecked Sendable {
 
     private var _isReinstallingTap = false
 
+    /// Timestamped RMS energy samples for speaker identification.
+    /// Each entry: (seconds since capture start, raw RMS value).
+    private var _energyLog: [(elapsed: TimeInterval, rms: Float)] = []
+    private var captureStartDate: Date = .now
+
     func startCapture() async throws {
         lock.withLock {
             _hasReceivedNonSilence = false
             _currentAudioLevel = 0.0
             samples = []
             fullRecordingSamples = []
+            _energyLog = []
         }
+        captureStartDate = .now
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .default, options: [
@@ -125,11 +132,13 @@ final class iOSAudioCaptureService: @unchecked Sendable {
                     vDSP_rmsqv(ptr, 1, &rms, vDSP_Length(frameCount))
                     let normalizedLevel = min(rms * 3.0, 1.0)
 
+                    let elapsed = Date.now.timeIntervalSince(self.captureStartDate)
                     self.lock.withLock {
                         self._currentAudioLevel = normalizedLevel
                         if !self._hasReceivedNonSilence, rms > 0.0001 {
                             self._hasReceivedNonSilence = true
                         }
+                        self._energyLog.append((elapsed, rms))
                     }
 
                     // Stream raw Int16 PCM for Deepgram / ElevenLabs
@@ -228,6 +237,23 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         let inputs = route.inputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", ")
         let outputs = route.outputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", ")
         log.info("Audio route — in: [\(inputs)] out: [\(outputs)]")
+    }
+
+    // MARK: - Energy Log (Speaker Identification)
+
+    /// Returns the average RMS energy during a time range (seconds since capture start).
+    /// Used to identify the user speaker (closest to mic = highest energy).
+    func averageEnergy(from startTime: TimeInterval, to endTime: TimeInterval) -> Float {
+        lock.withLock {
+            let matching = _energyLog.filter { $0.elapsed >= startTime && $0.elapsed <= endTime }
+            guard !matching.isEmpty else { return 0 }
+            return matching.map(\.rms).reduce(0, +) / Float(matching.count)
+        }
+    }
+
+    /// Clears the energy log after speaker identification is complete.
+    func clearEnergyLog() {
+        lock.withLock { _energyLog = [] }
     }
 
     func stopCapture() async {

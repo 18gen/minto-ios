@@ -1,7 +1,6 @@
 import AVFoundation
 import Foundation
 import Observation
-import SwiftData
 
 enum TranscriptionMode: String, CaseIterable {
     case elevenLabs // ElevenLabs Scribe v2 (best Japanese accuracy)
@@ -18,7 +17,6 @@ final class iOSRecordingCoordinator {
     private let whisperService = WhisperService()
     private let deepgramService = DeepgramStreamingService()
     private let elevenLabsService = ElevenLabsStreamingService()
-    private let speakerIdService = SpeakerIdentificationService()
     private let postRecordingProcessor = PostRecordingProcessor()
     private let backgroundManager = BackgroundAudioManager()
 
@@ -38,6 +36,7 @@ final class iOSRecordingCoordinator {
     private var levelPollTimer: Timer?
     private let activityManager = RecordingActivityManager.shared
     private var activeMode: TranscriptionMode = .elevenLabs
+    private var hasAttemptedAutoIdentify = false
 
     /// Total seconds accumulated from previous recording segments (before current active segment)
     private var accumulatedRecordingSeconds: TimeInterval = 0
@@ -74,7 +73,7 @@ final class iOSRecordingCoordinator {
         return transcriptionMode
     }
 
-    func startRecording(meeting: Meeting, modelContext: ModelContext) async {
+    func startRecording(meeting: Meeting) async {
         recordingError = nil
 
         let isResume = currentMeeting === meeting && accumulatedRecordingSeconds > 0
@@ -89,10 +88,8 @@ final class iOSRecordingCoordinator {
             accumulatedRecordingSeconds = 0
             committedText = meeting.rawTranscript
             recordingStartDate = .now
+            hasAttemptedAutoIdentify = false
         }
-
-        // Initialize Eagle speaker identification if profiles exist
-        initializeSpeakerIdentification(modelContext: modelContext, meeting: meeting)
 
         let effectiveMode = resolveTranscriptionMode()
         activeMode = effectiveMode
@@ -172,39 +169,6 @@ final class iOSRecordingCoordinator {
         }
     }
 
-    // MARK: - Eagle Speaker Identification
-
-    private func initializeSpeakerIdentification(modelContext: ModelContext, meeting: Meeting) {
-        guard !AppSettings.picovoiceKey.isEmpty else { return }
-
-        let descriptor = FetchDescriptor<SpeakerProfile>(
-            predicate: #Predicate { $0.enrollmentPercentage >= 100 }
-        )
-        guard let profiles = try? modelContext.fetch(descriptor), !profiles.isEmpty else { return }
-
-        do {
-            let profileDataList = profiles.map(\.profileData)
-            try speakerIdService.initialize(profileDataList: profileDataList)
-
-            // When Eagle identifies the user, mark it on the meeting
-            speakerIdService.onSpeakerIdentified = { [weak self] speakerIndex, _ in
-                guard let self, speakerIndex == 0 else { return }
-                // Speaker index 0 = first enrolled profile = "me"
-                Task { @MainActor [weak self] in
-                    guard let self, let meeting = self.currentMeeting else { return }
-                    if meeting.userSpeakerIndex == nil, let lastSegment = meeting.segments.last {
-                        // Auto-mark the diarization speaker as "me"
-                        if let speaker = lastSegment.speaker {
-                            meeting.markSpeakerAsUser(speaker)
-                        }
-                    }
-                }
-            }
-        } catch {
-            // Eagle init failed — continue without speaker identification
-        }
-    }
-
     /// Pause recording — keeps accumulated time, updates Live Activity to paused state.
     func pauseRecording() async {
         levelPollTimer?.invalidate()
@@ -213,7 +177,6 @@ final class iOSRecordingCoordinator {
 
         elevenLabsService.disconnect()
         deepgramService.disconnect()
-        speakerIdService.stop()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
 
@@ -236,7 +199,6 @@ final class iOSRecordingCoordinator {
 
         elevenLabsService.disconnect()
         deepgramService.disconnect()
-        speakerIdService.stop()
         audioCaptureService.onRawPCMReady = nil
         audioCaptureService.onAudioChunkReady = nil
 
@@ -349,7 +311,6 @@ final class iOSRecordingCoordinator {
             } else {
                 self.elevenLabsService.sendAudio(pcmData)
             }
-            self.speakerIdService.processAudio(pcmData)
         }
 
         // Don't use WAV chunk callback in streaming mode
@@ -413,6 +374,12 @@ final class iOSRecordingCoordinator {
     // MARK: - Post-Recording Result
 
     private func applyPostRecordingResult(_ result: PostRecordingProcessor.ProcessedResult, to meeting: Meeting) {
+        // Auto-identify user speaker before creating segments
+        if meeting.userSpeakerIndex == nil {
+            meeting.userSpeakerIndex = identifyLikelyUserSpeaker(from: result.segments)
+        }
+        audioCaptureService.clearEnergyLog()
+
         meeting.segments.removeAll()
         let existingNames = meeting.speakerNames
         let userIdx = meeting.userSpeakerIndex
@@ -448,7 +415,6 @@ final class iOSRecordingCoordinator {
             } else {
                 self.deepgramService.sendAudio(pcmData)
             }
-            self.speakerIdService.processAudio(pcmData)
         }
 
         // Don't use WAV chunk callback in cloud mode
@@ -491,6 +457,17 @@ final class iOSRecordingCoordinator {
         }
         committedText += text
         meeting.rawTranscript = committedText
+
+        // Auto-identify user speaker once enough diarized data is available
+        if !hasAttemptedAutoIdentify, meeting.userSpeakerIndex == nil {
+            let uniqueSpeakers = Set(meeting.segments.compactMap(\.speaker))
+            if uniqueSpeakers.count >= 2 {
+                hasAttemptedAutoIdentify = true
+                if let userSpeaker = identifyLikelyUserSpeakerFromMeeting(meeting) {
+                    meeting.markSpeakerAsUser(userSpeaker)
+                }
+            }
+        }
 
         // Group words by speaker runs and create segments
         let speakerRuns = groupWordsBySpeaker(result.words)
@@ -633,5 +610,83 @@ final class iOSRecordingCoordinator {
                 }
             }
         }
+    }
+
+    // MARK: - Auto Speaker Identification
+
+    /// Identifies the likely user speaker from batch diarization results using audio energy.
+    /// The speaker closest to the microphone produces higher RMS energy.
+    private func identifyLikelyUserSpeaker(from segments: [PostRecordingProcessor.SegmentData]) -> Int? {
+        let uniqueSpeakers = Set(segments.map(\.speaker))
+        guard uniqueSpeakers.count >= 2 else { return nil }
+
+        // Primary: energy-based identification (closest to mic = highest energy)
+        var speakerEnergy: [Int: (totalWeighted: Float, totalDuration: Float)] = [:]
+        for speaker in uniqueSpeakers {
+            for seg in segments where seg.speaker == speaker {
+                let energy = audioCaptureService.averageEnergy(from: seg.startTime, to: seg.endTime)
+                let duration = Float(seg.endTime - seg.startTime)
+                if energy > 0, duration > 0 {
+                    var accum = speakerEnergy[speaker] ?? (0, 0)
+                    accum.totalWeighted += energy * duration
+                    accum.totalDuration += duration
+                    speakerEnergy[speaker] = accum
+                }
+            }
+        }
+
+        let avgEnergies = speakerEnergy.compactMap { speaker, accum -> (Int, Float)? in
+            guard accum.totalDuration > 0 else { return nil }
+            return (speaker, accum.totalWeighted / accum.totalDuration)
+        }
+
+        if let (speaker, _) = avgEnergies.max(by: { $0.1 < $1.1 }) {
+            return speaker
+        }
+
+        // Fallback: most speaking time in first 60 seconds
+        return fallbackUserSpeaker(from: segments)
+    }
+
+    /// Identifies the likely user speaker from live meeting segments using audio energy.
+    /// Used for Deepgram real-time mode.
+    private func identifyLikelyUserSpeakerFromMeeting(_ meeting: Meeting) -> Int? {
+        let segments = meeting.segments.filter { $0.speaker != nil }
+        let uniqueSpeakers = Set(segments.compactMap(\.speaker))
+        guard uniqueSpeakers.count >= 2 else { return nil }
+
+        var speakerEnergy: [Int: (totalWeighted: Float, totalDuration: Float)] = [:]
+        for segment in segments {
+            guard let speaker = segment.speaker else { continue }
+            let energy = audioCaptureService.averageEnergy(from: segment.startTime, to: segment.endTime)
+            let duration = Float(segment.endTime - segment.startTime)
+            if energy > 0, duration > 0 {
+                var accum = speakerEnergy[speaker] ?? (0, 0)
+                accum.totalWeighted += energy * duration
+                accum.totalDuration += duration
+                speakerEnergy[speaker] = accum
+            }
+        }
+
+        let avgEnergies = speakerEnergy.compactMap { speaker, accum -> (Int, Float)? in
+            guard accum.totalDuration > 0 else { return nil }
+            return (speaker, accum.totalWeighted / accum.totalDuration)
+        }
+
+        if let (speaker, _) = avgEnergies.max(by: { $0.1 < $1.1 }) {
+            return speaker
+        }
+
+        return nil
+    }
+
+    /// Fallback: the speaker with the most speaking time in the first 60 seconds.
+    private func fallbackUserSpeaker(from segments: [PostRecordingProcessor.SegmentData]) -> Int? {
+        var speakingTime: [Int: Double] = [:]
+        for seg in segments where seg.startTime < 60 {
+            let end = min(seg.endTime, 60)
+            speakingTime[seg.speaker, default: 0] += end - seg.startTime
+        }
+        return speakingTime.max(by: { $0.value < $1.value })?.key
     }
 }
