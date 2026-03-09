@@ -7,24 +7,8 @@ struct NotepadBottomBar: View {
     @Binding var currentPage: NotePage
 
     private let coordinator = iOSRecordingCoordinator.shared
-
-    @State private var askText = ""
-    @State private var askAnswer = ""
-    @State private var askError: String?
-    @State private var isAsking = false
-    @State private var showAskSheet = false
-
+    @State private var askVM = NotepadAskViewModel()
     @FocusState private var askFocused: Bool
-
-    private let claudeService = ClaudeService.shared
-
-    private var receipts: [Receipt] {
-        [
-            .init(title: "Write follow up email", prompt: "Write a follow up email based on these notes.", style: .mint),
-            .init(title: "List my todos", prompt: "List all action items and todos.", style: .green),
-            .init(title: "Make notes longer", prompt: "Rewrite notes to be more detailed and structured.", style: .cyan),
-        ]
-    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -47,22 +31,27 @@ struct NotepadBottomBar: View {
 
             VStack(spacing: 10) {
                 if askFocused {
-                    receiptsRow
-                        .transition(
-                            .asymmetric(
-                                insertion: .push(from: .bottom).combined(with: .opacity),
-                                removal: .push(from: .top).combined(with: .opacity)
-                            )
+                    PromptsTray(prompts: Prompt.notepad) { p in
+                        askVM.askText = p.prompt
+                        askFocused = true
+                    }
+                    .transition(
+                        .asymmetric(
+                            insertion: .push(from: .bottom).combined(with: .opacity),
+                            removal: .push(from: .top).combined(with: .opacity)
                         )
+                    )
                 }
 
                 HStack(spacing: 10) {
                     AskBar(
-                        text: $askText,
-                        isAsking: $isAsking,
+                        text: $askVM.askText,
+                        isAsking: $askVM.isAsking,
                         focus: $askFocused,
                         placeholder: "Ask anything",
-                        onSend: { Task { await askQuestion() } }
+                        onSend: {
+                            Task { await askVM.askQuestion(userNotes: meeting.userNotes, transcript: meeting.rawTranscript) }
+                        }
                     )
 
                     if !askFocused {
@@ -70,7 +59,7 @@ struct NotepadBottomBar: View {
                     }
                 }
             }
-            .glassSurface(cornerRadius: AppTheme.barCorner, padding: 12)
+            .padding(10)
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.barCorner, style: .continuous)
                     .strokeBorder(
@@ -80,33 +69,12 @@ struct NotepadBottomBar: View {
             )
             .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocused)
         }
-        .sheet(isPresented: $showAskSheet) {
+        .sheet(isPresented: $askVM.showAskSheet) {
             askSheetContent
         }
     }
 
-    // MARK: - Receipts Row
-
-    private var receiptsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(receipts.prefix(3)) { r in
-                    ReceiptPill(receipt: r) {
-                        applyReceipt(r)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 4)
-        }
-    }
-
-    private func applyReceipt(_ r: Receipt) {
-        askText = r.prompt
-        askFocused = true
-    }
-
-    // MARK: - Left Recording Capsule
+    // MARK: - Recording Capsule
 
     private var recordingCapsule: some View {
         HStack(spacing: 10) {
@@ -148,14 +116,14 @@ struct NotepadBottomBar: View {
     private var askSheetContent: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                if isAsking {
+                if askVM.isAsking {
                     ProgressView()
                         .frame(maxWidth: .infinity, alignment: .center)
-                } else if let askError {
-                    Text(askError).foregroundStyle(.red).font(.caption)
+                } else if let error = askVM.askError {
+                    Text(error).foregroundStyle(.red).font(.caption)
                 } else {
                     ScrollView {
-                        Text(askAnswer)
+                        Text(askVM.askAnswer)
                             .font(.body)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,33 +135,10 @@ struct NotepadBottomBar: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { showAskSheet = false }
+                    Button("Done") { askVM.showAskSheet = false }
                 }
             }
         }
         .presentationDetents([.medium, .large])
-    }
-
-    // MARK: - Action
-
-    private func askQuestion() async {
-        let q = askText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return }
-
-        isAsking = true
-        askError = nil
-        showAskSheet = true
-
-        do {
-            askAnswer = try await claudeService.askQuestion(
-                question: q,
-                userNotes: meeting.userNotes,
-                transcript: meeting.rawTranscript
-            )
-        } catch {
-            askError = error.localizedDescription
-        }
-
-        isAsking = false
     }
 }
