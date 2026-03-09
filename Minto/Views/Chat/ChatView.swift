@@ -1,11 +1,11 @@
 import SwiftData
 import SwiftUI
 
-struct AIChatView: View {
+struct ChatView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var vm: AIChatViewModel
+    @State private var vm: ChatViewModel
     @FocusState private var inputFocused: Bool
     @State private var isAtBottom = true
     @State private var showDrawer = false
@@ -13,7 +13,7 @@ struct AIChatView: View {
     private let initialPrompt: String?
 
     init(conversation: ChatConversation, initialPrompt: String? = nil) {
-        self._vm = State(wrappedValue: AIChatViewModel(conversation: conversation))
+        self._vm = State(wrappedValue: ChatViewModel(conversation: conversation))
         self.initialPrompt = initialPrompt
     }
 

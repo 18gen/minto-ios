@@ -1,7 +1,7 @@
 import SwiftUI
 
 @Observable @MainActor
-final class AIChatViewModel {
+final class ChatViewModel {
     var messages: [ChatMessage] = []
     var inputText = ""
     var isResponding = false

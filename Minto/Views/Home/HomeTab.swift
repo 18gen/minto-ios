@@ -25,7 +25,11 @@ struct HomeTab: View {
                     showChatDrawer = false
                     chatConversation = conv
                     chatInitialPrompt = nil
-                    showChat = true
+                    // Delay presentation so drawer spring animation doesn't
+                    // interfere with fullScreenCover transition.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        showChat = true
+                    }
                 },
                 onNewChat: {
                     showChatDrawer = false
@@ -34,7 +38,9 @@ struct HomeTab: View {
                     modelContext.insert(conv)
                     chatConversation = conv
                     chatInitialPrompt = nil
-                    showChat = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        showChat = true
+                    }
                 }
             )
         } content: {
@@ -91,7 +97,7 @@ struct HomeTab: View {
                 }
                 .fullScreenCover(isPresented: $showChat) {
                     if let conv = chatConversation {
-                        AIChatView(
+                        ChatView(
                             conversation: conv,
                             initialPrompt: chatInitialPrompt
                         )
