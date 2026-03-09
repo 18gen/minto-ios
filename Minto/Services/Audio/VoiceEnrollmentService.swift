@@ -84,11 +84,7 @@ final class VoiceEnrollmentService: @unchecked Sendable {
             guard frameCount > 0, let ptr = converted.floatChannelData?[0] else { return }
 
             // Convert Float32 to Int16
-            var int16Samples = [Int16](repeating: 0, count: frameCount)
-            for i in 0..<frameCount {
-                let clamped = max(-1.0, min(1.0, ptr[i]))
-                int16Samples[i] = Int16(clamped * Float(Int16.max))
-            }
+            let int16Samples = AudioConversion.float32ToInt16Array(ptr, count: frameCount)
 
             // Calculate audio level for UI
             var rms: Float = 0
