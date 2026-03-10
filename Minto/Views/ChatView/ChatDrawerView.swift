@@ -11,7 +11,7 @@ struct ChatDrawerView: View {
     @Binding var isSearchExpanded: Bool
 
     @State private var searchText = ""
-    @State private var searchResults: [SearchResult] = []
+    @State private var searchResults: [ChatSearchHelper.SearchResult] = []
     @FocusState private var searchFocused: Bool
 
     private var isSearching: Bool {
@@ -61,7 +61,6 @@ private extension ChatDrawerView {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.primary)
                     .foregroundStyle(.secondary)
 
                 TextField("Search", text: $searchText)
@@ -208,15 +207,7 @@ private extension ChatDrawerView {
             .contentShape(Rectangle())
         }
         .buttonStyle(DrawerRowButtonStyle(isActive: isActive))
-        .contextMenu {
-            Button(role: .destructive) {
-                modelContext.delete(conv)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        } preview: {
-            conversationPreview(conv)
-        }
+        .modifier(ConversationContextMenu(conversation: conv, modelContext: modelContext))
     }
 
     @ViewBuilder
@@ -232,7 +223,7 @@ private extension ChatDrawerView {
                     .lineLimit(1)
 
                 if let snippet {
-                    highlightedSnippet(snippet, query: searchText)
+                    ChatSearchHelper.highlightedSnippet(snippet, query: searchText)
                         .font(.caption)
                         .lineLimit(2)
                 }
@@ -244,15 +235,7 @@ private extension ChatDrawerView {
             .contentShape(Rectangle())
         }
         .buttonStyle(DrawerRowButtonStyle())
-        .contextMenu {
-            Button(role: .destructive) {
-                modelContext.delete(conv)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        } preview: {
-            conversationPreview(conv)
-        }
+        .modifier(ConversationContextMenu(conversation: conv, modelContext: modelContext))
     }
 }
 
@@ -274,35 +257,9 @@ private struct DrawerRowButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Context Menu Preview
-
-private extension ChatDrawerView {
-    func conversationPreview(_ conv: ChatConversation) -> some View {
-        let messages = conv.messages.filter { !$0.isLoading && !$0.content.isEmpty }
-
-        return VStack(spacing: 16) {
-            Spacer(minLength: 0)
-            ForEach(messages) { message in
-                ChatBubble(message: message)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-        .frame(width: 340)
-        .frame(maxHeight: 500, alignment: .bottom)
-        .clipped()
-        .background(AppTheme.background)
-    }
-}
-
 // MARK: - Search Logic
 
 private extension ChatDrawerView {
-    struct SearchResult {
-        let conversation: ChatConversation
-        let snippet: String?
-    }
-
     func updateSearchResults() {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else {
@@ -318,60 +275,44 @@ private extension ChatDrawerView {
 
         searchResults = snapshots.compactMap { snapshot in
             let titleMatch = snapshot.title.localizedCaseInsensitiveContains(query)
-            let snippet = findSnippet(in: snapshot.contents, for: query)
+            let snippet = ChatSearchHelper.findSnippet(in: snapshot.contents, for: query)
 
             if titleMatch || snippet != nil {
-                return SearchResult(conversation: snapshot.conv, snippet: snippet)
+                return ChatSearchHelper.SearchResult(conversation: snapshot.conv, snippet: snippet)
             }
             return nil
         }
     }
-
-    func findSnippet(in contents: [String], for query: String) -> String? {
-        for content in contents {
-            guard let range = content.range(of: query, options: .caseInsensitive) else {
-                continue
-            }
-
-            let matchStart = range.lowerBound
-            let matchEnd = range.upperBound
-
-            // Expand context ~40 chars before and after the match
-            let contextStart = content.index(matchStart, offsetBy: -40, limitedBy: content.startIndex) ?? content.startIndex
-            let contextEnd = content.index(matchEnd, offsetBy: 40, limitedBy: content.endIndex) ?? content.endIndex
-
-            var snippet = String(content[contextStart..<contextEnd])
-                .replacingOccurrences(of: "\n", with: " ")
-
-            if contextStart != content.startIndex { snippet = "..." + snippet }
-            if contextEnd != content.endIndex { snippet += "..." }
-
-            return snippet
-        }
-        return nil
-    }
-
-    func highlightedSnippet(_ snippet: String, query: String) -> Text {
-        guard let range = snippet.range(of: query, options: .caseInsensitive) else {
-            return Text(snippet).foregroundColor(.secondary)
-        }
-
-        let before = String(snippet[snippet.startIndex..<range.lowerBound])
-        let match = String(snippet[range])
-        let after = String(snippet[range.upperBound..<snippet.endIndex])
-
-        return Text(before).foregroundColor(.secondary)
-            + Text(match).bold().foregroundColor(.primary)
-            + Text(after).foregroundColor(.secondary)
-    }
 }
 
-// MARK: - Helpers
+// MARK: - Context Menu Modifier
 
-private extension ChatDrawerView {
-    func relativeTime(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: .now)
+private struct ConversationContextMenu: ViewModifier {
+    let conversation: ChatConversation
+    let modelContext: ModelContext
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            Button(role: .destructive) {
+                modelContext.delete(conversation)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } preview: {
+            let messages = conversation.messages.filter { !$0.isLoading && !$0.content.isEmpty }
+
+            VStack(spacing: 16) {
+                Spacer(minLength: 0)
+                ForEach(messages) { message in
+                    ChatBubble(message: message)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .frame(width: 340)
+            .frame(maxHeight: 500, alignment: .bottom)
+            .clipped()
+            .background(AppTheme.background)
+        }
     }
 }
