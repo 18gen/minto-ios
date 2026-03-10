@@ -110,7 +110,7 @@ struct ChatView: View {
                         text: $vm.inputText,
                         isAsking: $vm.isResponding,
                         focus: $inputFocused,
-                        placeholder: "Follow up...",
+                        placeholder: "Ask anything",
                         onSend: {
                             Haptic.impact(.light)
                             let text = vm.inputText
