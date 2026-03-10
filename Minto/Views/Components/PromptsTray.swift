@@ -33,7 +33,7 @@ struct PromptsTray: View {
                         Image(systemName: "square.grid.2x2.fill")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(AppTheme.primary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 32, height: 32)
                             .background(AppTheme.surfaceFill)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .overlay(
