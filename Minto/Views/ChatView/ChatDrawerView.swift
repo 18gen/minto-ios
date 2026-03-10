@@ -176,6 +176,8 @@ private extension ChatDrawerView {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        } preview: {
+            conversationPreview(conv)
         }
     }
 
@@ -211,7 +213,51 @@ private extension ChatDrawerView {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        } preview: {
+            conversationPreview(conv)
         }
+    }
+}
+
+// MARK: - Context Menu Preview
+
+private extension ChatDrawerView {
+    func conversationPreview(_ conv: ChatConversation) -> some View {
+        let messages = conv.messages.filter { !$0.isLoading && !$0.content.isEmpty }
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(conv.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                if messages.isEmpty {
+                    Text("No messages")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(messages) { message in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(message.role == .user ? "You" : "AI")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(message.role == .user ? AppTheme.accent : .secondary)
+
+                            Text(message.content)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(8)
+                        }
+
+                        if message.id != messages.last?.id {
+                            Divider().opacity(0.3)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .frame(width: 320)
+        .background(AppTheme.background)
     }
 }
 
