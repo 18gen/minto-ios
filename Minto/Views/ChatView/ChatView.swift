@@ -9,6 +9,7 @@ struct ChatView: View {
     @FocusState private var inputFocused: Bool
     @State private var isAtBottom = true
     @State private var showDrawer = false
+    @State private var isSearchExpanded = false
 
     private let initialPrompt: String?
 
@@ -18,7 +19,7 @@ struct ChatView: View {
     }
 
     var body: some View {
-        DrawerContainer(isOpen: $showDrawer) {
+        DrawerContainer(isOpen: $showDrawer, isExpanded: $isSearchExpanded) {
             ChatDrawerView(
                 currentConversation: vm.conversation,
                 onSelect: { conv in
@@ -28,7 +29,8 @@ struct ChatView: View {
                 onNewChat: {
                     createNewChat()
                     showDrawer = false
-                }
+                },
+                isSearchExpanded: $isSearchExpanded
             )
         } content: {
             NavigationStack {
@@ -56,6 +58,11 @@ struct ChatView: View {
             }
         }
         .background(AppTheme.background.ignoresSafeArea())
+        .onChange(of: showDrawer) {
+            if !showDrawer {
+                isSearchExpanded = false
+            }
+        }
         .task {
             if let prompt = initialPrompt {
                 await vm.sendInitialPrompt(prompt)

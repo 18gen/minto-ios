@@ -15,9 +15,10 @@ struct HomeView: View {
     @State private var chatConversation: ChatConversation?
     @State private var chatInitialPrompt: String?
     @State private var showChatDrawer = false
+    @State private var isChatSearchExpanded = false
 
     var body: some View {
-        DrawerContainer(isOpen: $showChatDrawer) {
+        DrawerContainer(isOpen: $showChatDrawer, isExpanded: $isChatSearchExpanded) {
             ChatDrawerView(
                 currentConversation: nil,
                 onSelect: { conv in
@@ -32,7 +33,8 @@ struct HomeView: View {
                     modelContext.insert(conv)
                     chatInitialPrompt = nil
                     chatConversation = conv
-                }
+                },
+                isSearchExpanded: $isChatSearchExpanded
             )
         } content: {
             NavigationStack(path: $navigationPath) {
@@ -62,7 +64,7 @@ struct HomeView: View {
                     ) {
                         Button { createQuickNote() } label: {
                             Image(systemName: "square.and.pencil")
-                                .font(.system(size: 18, weight: .medium))
+                                .font(.system(size: 20, weight: .medium))
                                 .foregroundStyle(Color.white)
                                 .frame(width: 44, height: 44)
                                 .background(Circle().fill(AppTheme.accent))
@@ -106,6 +108,11 @@ struct HomeView: View {
                         NewNoteSheet(meeting: meeting)
                     }
                 }
+            }
+        }
+        .onChange(of: showChatDrawer) {
+            if !showChatDrawer {
+                isChatSearchExpanded = false
             }
         }
         .fullScreenCover(item: $chatConversation) { conv in
