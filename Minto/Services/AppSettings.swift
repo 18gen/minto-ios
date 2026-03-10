@@ -14,8 +14,17 @@ final class AppSettings {
         didSet { defaults.set(autoRecord, forKey: "autoRecord") }
     }
 
-    // Thread-safe static accessors — reads from Xcode scheme environment variables.
-    // nonisolated so actors (ClaudeService, WhisperService, etc.) can access without crossing isolation.
+    // MARK: - API Proxy
+
+    /// Base URL for the Cloudflare Worker proxy that holds API keys server-side.
+    /// REST endpoints (Claude, Whisper, ElevenLabs batch) go through this proxy.
+    nonisolated static let apiProxyBase = "https://minto-api.ichihashigen.workers.dev"
+
+    // MARK: - API Keys
+
+    // WebSocket services (Deepgram, ElevenLabs Realtime) still need client-side keys
+    // since Cloudflare Workers free tier doesn't support WebSocket proxying.
+    // REST services now use the proxy — these env vars are only for local development.
     nonisolated static var whisperKey: String { ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "" }
     nonisolated static var claudeKey: String { ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? "" }
     nonisolated static var deepgramKey: String { ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? "" }

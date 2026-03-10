@@ -51,16 +51,14 @@ final class PostRecordingProcessor {
             return nil
         }
 
-        // Step 2: LLM transcript correction
-        if !AppSettings.claudeKey.isEmpty {
-            statusMessage = "Polishing transcript..."
-            do {
-                fullText = try await ClaudeService.shared.correctTranscript(
-                    rawTranscript: fullText
-                )
-            } catch {
-                print("LLM correction failed: \(error.localizedDescription)")
-            }
+        // Step 2: LLM transcript correction (via proxy — always available)
+        statusMessage = "Polishing transcript..."
+        do {
+            fullText = try await ClaudeService.shared.correctTranscript(
+                rawTranscript: fullText
+            )
+        } catch {
+            print("LLM correction failed: \(error.localizedDescription)")
         }
 
         return ProcessedResult(fullText: fullText, segments: segments)

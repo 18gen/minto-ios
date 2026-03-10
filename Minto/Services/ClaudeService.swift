@@ -3,17 +3,16 @@ import Foundation
 actor ClaudeService {
     static let shared = ClaudeService()
 
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
+    // swiftlint:disable:next force_unwrapping
+    private let endpoint = URL(string: "\(AppSettings.apiProxyBase)/v1/claude")!
     private let model = "claude-sonnet-4-20250514"
 
     enum ClaudeError: Error, LocalizedError {
-        case noAPIKey
         case httpError(Int, String)
         case noContent
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: "Claude API key not set"
             case let .httpError(code, msg): "HTTP \(code): \(msg)"
             case .noContent: "No content in response"
             }
@@ -104,14 +103,9 @@ actor ClaudeService {
     }
 
     private func makeRequest(systemPrompt: String, messages: [[String: String]]) async throws -> String {
-        let apiKey = AppSettings.claudeKey
-        guard !apiKey.isEmpty else { throw ClaudeError.noAPIKey }
-
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
             "model": model,

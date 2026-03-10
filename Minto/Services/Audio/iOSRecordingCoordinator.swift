@@ -605,9 +605,7 @@ final class iOSRecordingCoordinator {
         } catch {
             await MainActor.run { [weak self] in
                 self?.currentPartial = ""
-                if case WhisperService.WhisperError.noAPIKey = error {
-                    self?.recordingError = error.localizedDescription
-                }
+                self?.recordingError = error.localizedDescription
             }
         }
     }

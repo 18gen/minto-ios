@@ -18,13 +18,11 @@ actor ElevenLabsBatchService {
     }
 
     enum BatchError: Error, LocalizedError {
-        case noAPIKey
         case httpError(Int, String)
         case decodingError(String)
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: "ElevenLabs API key not set"
             case let .httpError(code, msg): "HTTP \(code): \(msg)"
             case let .decodingError(msg): "Decoding error: \(msg)"
             }
@@ -34,16 +32,13 @@ actor ElevenLabsBatchService {
     // MARK: - Public
 
     func transcribe(audioFileURL: URL) async throws -> BatchResult {
-        let apiKey = AppSettings.elevenLabsKey
-        guard !apiKey.isEmpty else { throw BatchError.noAPIKey }
-
         let audioData = try Data(contentsOf: audioFileURL)
 
         let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "https://api.elevenlabs.io/v1/speech-to-text")!) // swiftlint:disable:this force_unwrapping
+        // swiftlint:disable:next force_unwrapping
+        var request = URLRequest(url: URL(string: "\(AppSettings.apiProxyBase)/v1/elevenlabs/stt")!)
         request.httpMethod = "POST"
         request.timeoutInterval = 300
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()

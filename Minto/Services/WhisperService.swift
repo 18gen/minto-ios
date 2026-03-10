@@ -1,7 +1,8 @@
 import Foundation
 
 actor WhisperService {
-    private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")! // swiftlint:disable:this force_unwrapping
+    // swiftlint:disable:next force_unwrapping
+    private let endpoint = URL(string: "\(AppSettings.apiProxyBase)/v1/whisper")!
 
     struct VerboseResult: Decodable, Sendable {
         let text: String
@@ -15,13 +16,11 @@ actor WhisperService {
     }
 
     enum WhisperError: Error, LocalizedError {
-        case noAPIKey
         case httpError(Int, String)
         case decodingError(String)
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: "Whisper API key not set"
             case let .httpError(code, msg): "HTTP \(code): \(msg)"
             case let .decodingError(msg): "Decoding error: \(msg)"
             }
@@ -29,13 +28,9 @@ actor WhisperService {
     }
 
     func transcribe(audioData: Data) async throws -> VerboseResult {
-        let apiKey = AppSettings.whisperKey
-        guard !apiKey.isEmpty else { throw WhisperError.noAPIKey }
-
         let boundary = UUID().uuidString
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()
