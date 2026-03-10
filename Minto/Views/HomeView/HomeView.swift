@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var sheetMeeting: Meeting?
     @State private var chatConversation: ChatConversation?
     @State private var chatInitialPrompt: String?
+    @State private var chatInitialRecipeLabel: String?
     @State private var showChatDrawer = false
     @State private var isChatSearchExpanded = false
 
@@ -60,7 +61,7 @@ struct HomeView: View {
                         isAsking: $vm.isAsking,
                         askFocus: $askFocused,
                         onSend: { navigateToChat(prompt: vm.askText) },
-                        onPromptSelect: { navigateToChat(prompt: $0.prompt) }
+                        onPromptSelect: { navigateToChat(prompt: $0.prompt, recipeLabel: $0.label) }
                     ) {
                         Button { createQuickNote() } label: {
                             Image(systemName: "square.and.pencil")
@@ -118,7 +119,8 @@ struct HomeView: View {
         .fullScreenCover(item: $chatConversation) { conv in
             ChatView(
                 conversation: conv,
-                initialPrompt: chatInitialPrompt
+                initialPrompt: chatInitialPrompt,
+                initialRecipeLabel: chatInitialRecipeLabel
             )
             .id(conv.persistentModelID)
         }
@@ -133,7 +135,7 @@ struct HomeView: View {
         showNewNoteSheet = true
     }
 
-    private func navigateToChat(prompt: String) {
+    private func navigateToChat(prompt: String, recipeLabel: String? = nil) {
         Haptic.impact(.light)
         let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -144,6 +146,7 @@ struct HomeView: View {
         let conv = ChatConversation(meetingsContext: context)
         modelContext.insert(conv)
         chatInitialPrompt = text
+        chatInitialRecipeLabel = recipeLabel
         chatConversation = conv
     }
 
