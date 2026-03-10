@@ -6,17 +6,19 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     var content: String
     let timestamp: Date
     var isLoading: Bool
+    var recipeLabel: String?
 
     enum Role: String, Codable {
         case user
         case assistant
     }
 
-    init(id: UUID = UUID(), role: Role, content: String, timestamp: Date = .now, isLoading: Bool = false) {
+    init(id: UUID = UUID(), role: Role, content: String, timestamp: Date = .now, isLoading: Bool = false, recipeLabel: String? = nil) {
         self.id = id
         self.role = role
         self.content = content
         self.timestamp = timestamp
         self.isLoading = isLoading
+        self.recipeLabel = recipeLabel
     }
 }

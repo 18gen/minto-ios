@@ -44,8 +44,13 @@ final class ChatViewModel {
         await send(trimmed)
     }
 
-    private func send(_ text: String) async {
-        let userMsg = ChatMessage(role: .user, content: text)
+    func sendRecipe(_ prompt: Prompt) async {
+        inputText = ""
+        await send(prompt.prompt, recipeLabel: prompt.label)
+    }
+
+    private func send(_ text: String, recipeLabel: String? = nil) async {
+        let userMsg = ChatMessage(role: .user, content: text, recipeLabel: recipeLabel)
         messages.append(userMsg)
 
         // Auto-title from first user message

@@ -10,6 +10,7 @@ struct ChatView: View {
     @State private var isAtBottom = true
     @State private var showDrawer = false
     @State private var isSearchExpanded = false
+    @State private var showRecipes = false
 
     private let initialPrompt: String?
 
@@ -106,23 +107,53 @@ struct ChatView: View {
                     .frame(height: 20)
                     .allowsHitTesting(false)
 
-                    AskBar(
-                        text: $vm.inputText,
-                        isAsking: $vm.isResponding,
-                        focus: $inputFocused,
-                        placeholder: "Ask anything",
-                        onSend: {
-                            Haptic.impact(.light)
-                            let text = vm.inputText
-                            inputFocused = false
-                            vm.inputText = ""
-                            Task { await vm.sendMessage(text) }
+                    VStack(alignment: .leading, spacing: 10) {
+                        if inputFocused || showRecipes {
+                            PromptsTray(
+                                prompts: Prompt.chat,
+                                onSelect: { prompt in
+                                    showRecipes = false
+                                    inputFocused = false
+                                    Task { await vm.sendRecipe(prompt) }
+                                },
+                                showGridButton: true,
+                                isExpanded: $showRecipes
+                            )
+                            .transition(
+                                .asymmetric(
+                                    insertion: .push(from: .bottom).combined(with: .opacity),
+                                    removal: .push(from: .top).combined(with: .opacity)
+                                )
+                            )
                         }
-                    )
+
+                        AskBar(
+                            text: $vm.inputText,
+                            isAsking: $vm.isResponding,
+                            focus: $inputFocused,
+                            placeholder: "Ask anything",
+                            onSend: {
+                                Haptic.impact(.light)
+                                let text = vm.inputText
+                                inputFocused = false
+                                vm.inputText = ""
+                                Task { await vm.sendMessage(text) }
+                            }
+                        )
+                    }
                     .padding(.horizontal, 16)
                     .padding(.top, 5)
                     .padding(.bottom, 10)
                     .background(AppTheme.background)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.78), value: inputFocused)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showRecipes)
+                }
+            }
+            .onChange(of: vm.inputText) {
+                if vm.inputText == "/" {
+                    showRecipes = true
+                } else if !vm.inputText.hasPrefix("/") {
+                    if showRecipes { showRecipes = false }
                 }
             }
             .overlay(alignment: .bottom) {

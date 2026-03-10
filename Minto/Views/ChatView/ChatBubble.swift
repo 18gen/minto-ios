@@ -12,18 +12,35 @@ struct ChatBubble: View {
             HStack {
                 Spacer(minLength: 60)
 
-                Text(message.content)
-                    .font(.system(size: 15))
-                    .foregroundStyle(.white)
-                    .textSelection(.enabled)
+                if let recipeLabel = message.recipeLabel {
+                    HStack(spacing: 8) {
+                        SlashBadge(color: AppTheme.primary)
+                        Text(recipeLabel)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.white)
+                    }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(AppTheme.surfaceFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(Capsule())
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(AppTheme.surfaceStroke, lineWidth: 0.8)
+                        Capsule()
+                            .stroke(AppTheme.primary.opacity(0.3), lineWidth: 1)
                     )
+                } else {
+                    Text(message.content)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.white)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.surfaceFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(AppTheme.surfaceStroke, lineWidth: 0.8)
+                        )
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {

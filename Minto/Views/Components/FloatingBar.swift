@@ -9,6 +9,8 @@ struct FloatingBar<Accessory: View>: View {
     let onPromptSelect: (Prompt) -> Void
     @ViewBuilder let accessory: () -> Accessory
 
+    @State private var showRecipes = false
+
     var body: some View {
         VStack(spacing: 0) {
             LinearGradient(
@@ -19,14 +21,22 @@ struct FloatingBar<Accessory: View>: View {
             .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 10) {
-                if askFocus.wrappedValue {
-                    PromptsTray(prompts: prompts) { onPromptSelect($0) }
-                        .transition(
-                            .asymmetric(
-                                insertion: .push(from: .bottom).combined(with: .opacity),
-                                removal: .push(from: .top).combined(with: .opacity)
-                            )
+                if askFocus.wrappedValue || showRecipes {
+                    PromptsTray(
+                        prompts: prompts,
+                        onSelect: { prompt in
+                            showRecipes = false
+                            onPromptSelect(prompt)
+                        },
+                        showGridButton: true,
+                        isExpanded: $showRecipes
+                    )
+                    .transition(
+                        .asymmetric(
+                            insertion: .push(from: .bottom).combined(with: .opacity),
+                            removal: .push(from: .top).combined(with: .opacity)
                         )
+                    )
                 }
 
                 HStack(spacing: 10) {
@@ -50,5 +60,13 @@ struct FloatingBar<Accessory: View>: View {
         }
         .ignoresSafeArea(.keyboard)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocus.wrappedValue)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showRecipes)
+        .onChange(of: askText) {
+            if askText == "/" {
+                showRecipes = true
+            } else if !askText.hasPrefix("/") {
+                if showRecipes { showRecipes = false }
+            }
+        }
     }
 }

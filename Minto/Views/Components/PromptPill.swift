@@ -20,6 +20,14 @@ extension Prompt {
         .init(label: "List my todos", prompt: "List all action items and todos."),
         .init(label: "Make notes longer", prompt: "Rewrite notes to be more detailed and structured."),
     ]
+
+    static let chat: [Prompt] = [
+        .init(label: "Summarize chat", prompt: "この会話の内容を簡潔にまとめてください。"),
+        .init(label: "List action items", prompt: "この会話からアクションアイテムとTODOをリストアップしてください。"),
+        .init(label: "Write follow-up email", prompt: "この会話の内容を元にフォローアップメールを書いてください。"),
+        .init(label: "Translate to English", prompt: "この会話の内容を英語に翻訳してください。"),
+        .init(label: "Explain in detail", prompt: "最後の回答についてもっと詳しく説明してください。"),
+    ]
 }
 
 // MARK: - Pill
