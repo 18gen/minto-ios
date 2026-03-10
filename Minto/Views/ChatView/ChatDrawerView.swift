@@ -203,12 +203,10 @@ private extension ChatDrawerView {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(isActive ? Color.white.opacity(0.15) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 8)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DrawerRowButtonStyle(isActive: isActive))
         .contextMenu {
             Button(role: .destructive) {
                 modelContext.delete(conv)
@@ -245,7 +243,7 @@ private extension ChatDrawerView {
             .padding(.horizontal, 8)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DrawerRowButtonStyle())
         .contextMenu {
             Button(role: .destructive) {
                 modelContext.delete(conv)
@@ -255,6 +253,24 @@ private extension ChatDrawerView {
         } preview: {
             conversationPreview(conv)
         }
+    }
+}
+
+// MARK: - Row Button Style
+
+private struct DrawerRowButtonStyle: ButtonStyle {
+    var isActive: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(configuration.isPressed
+                        ? Color.white.opacity(0.12)
+                        : isActive ? Color.white.opacity(0.10) : .clear)
+                    .padding(.horizontal, 8)
+            )
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
