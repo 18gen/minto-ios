@@ -100,30 +100,31 @@ struct ChatView: View {
             }
             .onTapGesture { inputFocused = false }
             .safeAreaInset(edge: .bottom) {
-                FloatingBar(
-                    prompts: Prompt.chat,
-                    askText: $vm.inputText,
-                    isAsking: $vm.isResponding,
-                    askFocus: $inputFocused,
-                    onSend: {
-                        Haptic.impact(.light)
-                        let text = vm.inputText
-                        inputFocused = false
-                        vm.inputText = ""
-                        Task { await vm.sendMessage(text) }
-                    },
-                    onPromptSelect: { prompt in
-                        inputFocused = false
-                        Task { await vm.sendRecipe(prompt) }
+                VStack(spacing: 0) {
+                    ScrollToBottomButton(isVisible: !isAtBottom) {
+                        scrollToBottom(proxy)
                     }
-                ) { EmptyView() }
-            }
-            .overlay(alignment: .bottom) {
-                ScrollToBottomButton(isVisible: !isAtBottom) {
-                    scrollToBottom(proxy)
+                    .animation(.easeInOut(duration: 0.2), value: isAtBottom)
+
+                    FloatingBar(
+                        prompts: Prompt.chat,
+                        askText: $vm.inputText,
+                        isAsking: $vm.isResponding,
+                        askFocus: $inputFocused,
+                        onSend: {
+                            Haptic.impact(.light)
+                            let text = vm.inputText
+                            inputFocused = false
+                            vm.inputText = ""
+                            Task { await vm.sendMessage(text) }
+                        },
+                        onPromptSelect: { prompt in
+                            inputFocused = false
+                            Task { await vm.sendRecipe(prompt) }
+                        }
+                    ) { EmptyView() }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: isAtBottom)
         }
         .background(AppTheme.background)
     }

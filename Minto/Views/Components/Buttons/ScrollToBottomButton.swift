@@ -18,7 +18,6 @@ struct ScrollToBottomButton: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
-            .padding(.bottom, 70)
             .transition(.scale.combined(with: .opacity))
         }
     }
