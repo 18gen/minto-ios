@@ -14,7 +14,7 @@ struct SlashBadge: View {
                 .frame(width: 22, height: 22)
             Text("/")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(color)
+                .foregroundStyle(.black)
                 .offset(y: -0.5)
         }
     }
