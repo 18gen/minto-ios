@@ -4,30 +4,38 @@ import SwiftUI
 /// tap-to-dismiss, and drag gesture.
 struct DrawerContainer<Drawer: View, Content: View>: View {
     @Binding var isOpen: Bool
+    var isExpanded: Binding<Bool>?
     @ViewBuilder let drawer: () -> Drawer
     @ViewBuilder let content: () -> Content
 
-    private let drawerWidth: CGFloat = 280
+    private let normalWidth: CGFloat = 280
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            content()
-                .offset(x: isOpen ? drawerWidth : 0)
-                .overlay {
-                    if isOpen {
-                        Color.white.opacity(0.15)
-                            .ignoresSafeArea()
-                            .onTapGesture { isOpen = false }
-                    }
-                }
+        GeometryReader { geo in
+            let expanded = isExpanded?.wrappedValue ?? false
+            let effectiveWidth = expanded ? geo.size.width : normalWidth
 
-            if isOpen {
-                drawer()
-                    .frame(width: drawerWidth)
-                    .transition(.move(edge: .leading))
+            ZStack(alignment: .leading) {
+                content()
+                    .offset(x: isOpen ? effectiveWidth : 0)
+                    .overlay {
+                        if isOpen, !expanded {
+                            Color.white.opacity(0.15)
+                                .ignoresSafeArea()
+                                .onTapGesture { isOpen = false }
+                        }
+                    }
+
+                if isOpen {
+                    drawer()
+                        .frame(width: effectiveWidth)
+                        .transition(.move(edge: .leading))
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isOpen)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isExpanded?.wrappedValue)
         .gesture(dragGesture)
     }
 
