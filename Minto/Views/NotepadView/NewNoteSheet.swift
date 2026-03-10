@@ -102,8 +102,9 @@ private extension NewNoteSheet {
             } label: {
                 Text("Done")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppTheme.primary)
+                    .foregroundStyle(hasContent ? AppTheme.primary : AppTheme.textTertiary)
             }
+            .disabled(!hasContent)
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
@@ -210,6 +211,12 @@ private extension NewNoteSheet {
 // MARK: - Computed
 
 private extension NewNoteSheet {
+    var hasContent: Bool {
+        !meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !meeting.userNotes.isEmpty
+            || !meeting.rawTranscript.isEmpty
+    }
+
     var formattedTime: String {
         let m = elapsedSeconds / 60
         let s = elapsedSeconds % 60
