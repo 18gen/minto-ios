@@ -8,106 +8,61 @@ struct ChatDrawerView: View {
     let currentConversation: ChatConversation?
     let onSelect: (ChatConversation) -> Void
     let onNewChat: () -> Void
+    @Binding var isSearchExpanded: Bool
 
     @State private var searchText = ""
-    @FocusState private var searchFocused: Bool
-
-    private let drawerWidth: CGFloat = 280
+    @State private var searchActive = false
 
     private var isSearching: Bool {
-        searchFocused || !searchText.isEmpty
+        searchActive || !searchText.isEmpty
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            searchBar
-                .padding(.horizontal, 12)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-
-            Divider().opacity(0.3)
-
-            // Conversation list
-            if isSearching {
-                searchResultsList
-            } else if conversations.isEmpty {
-                emptyState
-            } else {
-                groupedList
-            }
-
-            Divider().opacity(0.3)
-
-            // New Chat button
-            Button {
-                Haptic.impact(.light)
-                onNewChat()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 18))
-                    Text("New Chat")
-                        .font(.subheadline.weight(.medium))
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                // Conversation list
+                if isSearching {
+                    searchResultsList
+                } else if conversations.isEmpty {
+                    emptyState
+                } else {
+                    groupedList
                 }
-                .foregroundStyle(AppTheme.accent)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-            }
-        }
-        .frame(width: drawerWidth)
-        .background(AppTheme.background)
-    }
-}
 
-// MARK: - Search Bar
+                // New Chat button
+                if !isSearching {
+                    Divider().opacity(0.3)
 
-private extension ChatDrawerView {
-    var searchBar: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                TextField("Search", text: $searchText)
-                    .font(.system(size: 15))
-                    .focused($searchFocused)
-                    .submitLabel(.search)
-
-                if !searchText.isEmpty {
                     Button {
-                        searchText = ""
+                        Haptic.impact(.light)
+                        onNewChat()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.tertiary)
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 18))
+                            Text("New Chat")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .foregroundStyle(AppTheme.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                     }
-                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            if isSearching {
-                Button {
-                    searchText = ""
-                    searchFocused = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.white.opacity(0.08))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .transition(.scale.combined(with: .opacity))
+            .background(AppTheme.background)
+            .searchable(text: $searchText, isPresented: $searchActive, placement: .navigationBarDrawer(displayMode: .always))
+            .navigationTitle("Chat History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(AppTheme.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        }
+        .onChange(of: searchActive) {
+            isSearchExpanded = searchActive
+            if !searchActive {
+                searchText = ""
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isSearching)
     }
 }
 
