@@ -221,17 +221,17 @@ private extension ChatDrawerView {
     func conversationPreview(_ conv: ChatConversation) -> some View {
         let messages = conv.messages.filter { !$0.isLoading && !$0.content.isEmpty }
 
-        return ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(messages) { message in
-                    ChatBubble(message: message)
-                }
+        return VStack(spacing: 16) {
+            Spacer(minLength: 0)
+            ForEach(messages) { message in
+                ChatBubble(message: message)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
         }
-        .defaultScrollAnchor(.bottom)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
         .frame(width: 340)
+        .frame(maxHeight: 500, alignment: .bottom)
+        .clipped()
         .background(AppTheme.background)
     }
 }
