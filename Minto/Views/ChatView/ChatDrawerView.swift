@@ -195,16 +195,10 @@ private extension ChatDrawerView {
             onSelect(conv)
         } label: {
             HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(conv.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Text(relativeTime(conv.updatedAt))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
+                Text(conv.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
                 Spacer()
             }
             .padding(.horizontal, 12)
