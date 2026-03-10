@@ -29,25 +29,10 @@ struct ChatDrawerView: View {
                     groupedList
                 }
 
-                // New Chat button
+                // Placeholder for future bottom bar button
                 if !isSearching {
                     Divider().opacity(0.3)
-
-                    Button {
-                        Haptic.impact(.light)
-                        onNewChat()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 18))
-                            Text("New Chat")
-                                .font(.subheadline.weight(.medium))
-                        }
-                        .foregroundStyle(AppTheme.accent)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                    }
+                    Spacer().frame(height: 14)
                 }
             }
             .background(AppTheme.background)
@@ -56,6 +41,17 @@ struct ChatDrawerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Haptic.impact(.light)
+                        onNewChat()
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                }
+            }
         }
         .onChange(of: searchActive) {
             isSearchExpanded = searchActive
