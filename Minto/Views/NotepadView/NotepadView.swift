@@ -8,6 +8,10 @@ struct NotepadView: View {
     @State private var currentPage: NotePage = .notes
     @FocusState private var notesFocused: Bool
 
+    @State private var chatConversation: ChatConversation?
+    @State private var chatInitialPrompt: String?
+    @State private var chatInitialRecipeLabel: String?
+
     var body: some View {
         ZStack(alignment: .bottom) {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
@@ -17,12 +21,40 @@ struct NotepadView: View {
                 meeting: meeting,
                 currentPage: $currentPage,
                 isNotepadEditing: notesFocused,
-                onDismissKeyboard: { notesFocused = false }
+                onDismissKeyboard: { notesFocused = false },
+                onOpenChat: { text, recipeLabel in
+                    openChat(prompt: text, recipeLabel: recipeLabel)
+                }
             )
         }
         .background(AppTheme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
+        .fullScreenCover(item: $chatConversation) { conv in
+            ChatView(
+                conversation: conv,
+                initialPrompt: chatInitialPrompt,
+                initialRecipeLabel: chatInitialRecipeLabel
+            )
+            .id(conv.persistentModelID)
+        }
+    }
+
+    private func openChat(prompt: String, recipeLabel: String?) {
+        Haptic.impact(.light)
+        var context = ""
+        if !meeting.userNotes.isEmpty {
+            context += "ユーザーのメモ:\n\(meeting.userNotes)\n\n"
+        }
+        if !meeting.rawTranscript.isEmpty {
+            context += "文字起こし:\n\(meeting.rawTranscript)"
+        }
+
+        let conv = ChatConversation(meetingsContext: context)
+        modelContext.insert(conv)
+        chatInitialPrompt = prompt
+        chatInitialRecipeLabel = recipeLabel
+        chatConversation = conv
     }
 }
 
@@ -89,4 +121,3 @@ private extension NotepadView {
         return meeting.startDate.formatted(date: .abbreviated, time: .shortened)
     }
 }
-

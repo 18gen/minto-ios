@@ -5,9 +5,11 @@ struct NotepadBottomBar: View {
     @Binding var currentPage: NotePage
     var isNotepadEditing: Bool = false
     var onDismissKeyboard: (() -> Void)?
+    var onOpenChat: ((_ text: String, _ recipeLabel: String?) -> Void)?
 
     private let coordinator = iOSRecordingCoordinator.shared
-    @State private var askVM = NotepadAskViewModel()
+    @State private var askText = ""
+    @State private var isAsking = false
     @FocusState private var askFocused: Bool
 
     var body: some View {
@@ -16,15 +18,19 @@ struct NotepadBottomBar: View {
 
             FloatingBar(
                 prompts: Prompt.notepad,
-                askText: $askVM.askText,
-                isAsking: $askVM.isAsking,
+                askText: $askText,
+                isAsking: $isAsking,
                 askFocus: $askFocused,
                 onSend: {
-                    Task { await askVM.askQuestion(userNotes: meeting.userNotes, transcript: meeting.rawTranscript) }
+                    let text = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { return }
+                    askText = ""
+                    askFocused = false
+                    onOpenChat?(text, nil)
                 },
                 onPromptSelect: { p in
-                    askVM.askText = p.prompt
-                    askFocused = true
+                    askFocused = false
+                    onOpenChat?(p.prompt, p.label)
                 }
             ) {
                 if isNotepadEditing, let onDismissKeyboard {
@@ -36,9 +42,6 @@ struct NotepadBottomBar: View {
                     recordingCapsule
                 }
             }
-        }
-        .sheet(isPresented: $askVM.showAskSheet) {
-            askSheetContent
         }
     }
 
@@ -85,36 +88,5 @@ struct NotepadBottomBar: View {
             }
         }
         .disabled(coordinator.isProcessingBatch)
-    }
-
-    // MARK: - Ask Sheet
-
-    private var askSheetContent: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 10) {
-                if askVM.isAsking {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else if let error = askVM.askError {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                } else {
-                    ScrollView {
-                        Text(askVM.askAnswer)
-                            .font(.body)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            .padding()
-            .navigationTitle("Answer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { askVM.showAskSheet = false }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
     }
 }
