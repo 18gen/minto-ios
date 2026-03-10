@@ -33,9 +33,9 @@ final class ChatViewModel {
         isResponding = false
     }
 
-    func sendInitialPrompt(_ prompt: String) async {
+    func sendInitialPrompt(_ prompt: String, recipeLabel: String? = nil) async {
         guard messages.isEmpty else { return }
-        await send(prompt)
+        await send(prompt, recipeLabel: recipeLabel)
     }
 
     func sendMessage(_ text: String) async {

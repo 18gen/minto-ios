@@ -12,10 +12,12 @@ struct ChatView: View {
     @State private var isSearchExpanded = false
 
     private let initialPrompt: String?
+    private let initialRecipeLabel: String?
 
-    init(conversation: ChatConversation, initialPrompt: String? = nil) {
+    init(conversation: ChatConversation, initialPrompt: String? = nil, initialRecipeLabel: String? = nil) {
         self._vm = State(wrappedValue: ChatViewModel(conversation: conversation))
         self.initialPrompt = initialPrompt
+        self.initialRecipeLabel = initialRecipeLabel
     }
 
     var body: some View {
@@ -65,7 +67,7 @@ struct ChatView: View {
         }
         .task {
             if let prompt = initialPrompt {
-                await vm.sendInitialPrompt(prompt)
+                await vm.sendInitialPrompt(prompt, recipeLabel: initialRecipeLabel)
             }
         }
     }
