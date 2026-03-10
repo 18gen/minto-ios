@@ -9,12 +9,12 @@ struct SlashBadge: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(color.opacity(0.22))
-                .frame(width: 22, height: 22)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(color)
+                .frame(width: 18, height: 18)
             Text("/")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(Color(white: 0.15))
                 .offset(y: -0.5)
         }
     }

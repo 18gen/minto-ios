@@ -16,7 +16,7 @@ struct ChatBubble: View {
                     HStack(spacing: 8) {
                         SlashBadge(color: AppTheme.primary)
                         Text(recipeLabel)
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(.white)
                     }
                     .padding(.horizontal, 14)
