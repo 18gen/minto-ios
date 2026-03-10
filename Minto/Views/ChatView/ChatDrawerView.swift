@@ -11,6 +11,7 @@ struct ChatDrawerView: View {
     @Binding var isSearchExpanded: Bool
 
     @State private var searchText = ""
+    @State private var searchResults: [SearchResult] = []
     @FocusState private var searchFocused: Bool
 
     private var isSearching: Bool {
@@ -45,6 +46,9 @@ struct ChatDrawerView: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isSearchExpanded = searchFocused
             }
+        }
+        .onChange(of: searchText) {
+            updateSearchResults()
         }
     }
 }
@@ -157,26 +161,23 @@ private extension ChatDrawerView {
                     }
                     .padding(.bottom, 16)
                 }
+            } else if searchResults.isEmpty {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Text("No results")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
             } else {
-                let results = searchResults
-                if results.isEmpty {
-                    VStack(spacing: 8) {
-                        Spacer()
-                        Text("No results")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 2) {
-                            ForEach(results, id: \.conversation.persistentModelID) { result in
-                                searchResultRow(result.conversation, snippet: result.snippet)
-                            }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(searchResults, id: \.conversation.persistentModelID) { result in
+                            searchResultRow(result.conversation, snippet: result.snippet)
                         }
-                        .padding(.bottom, 16)
                     }
+                    .padding(.bottom, 16)
                 }
             }
         }
@@ -233,7 +234,6 @@ private extension ChatDrawerView {
                 if let snippet {
                     highlightedSnippet(snippet, query: searchText)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
             }
@@ -303,29 +303,36 @@ private extension ChatDrawerView {
         let snippet: String?
     }
 
-    var searchResults: [SearchResult] {
-        let query = searchText
-        guard !query.isEmpty else { return [] }
+    func updateSearchResults() {
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else {
+            searchResults = []
+            return
+        }
 
-        return conversations.compactMap { conv in
-            let titleMatch = conv.title.localizedCaseInsensitiveContains(query)
-            let snippet = findSnippet(in: conv, for: query)
+        // Snapshot message data on main actor to avoid SwiftData threading issues
+        let snapshots: [(conv: ChatConversation, title: String, contents: [String])] = conversations.map { conv in
+            let msgs = conv.messages.map(\.content)
+            return (conv: conv, title: conv.title, contents: msgs)
+        }
+
+        searchResults = snapshots.compactMap { snapshot in
+            let titleMatch = snapshot.title.localizedCaseInsensitiveContains(query)
+            let snippet = findSnippet(in: snapshot.contents, for: query)
 
             if titleMatch || snippet != nil {
-                return SearchResult(conversation: conv, snippet: snippet)
+                return SearchResult(conversation: snapshot.conv, snippet: snippet)
             }
             return nil
         }
     }
 
-    func findSnippet(in conv: ChatConversation, for query: String) -> String? {
-        let messages = conv.messages
-        for message in messages {
-            guard let range = message.content.range(of: query, options: .caseInsensitive) else {
+    func findSnippet(in contents: [String], for query: String) -> String? {
+        for content in contents {
+            guard let range = content.range(of: query, options: .caseInsensitive) else {
                 continue
             }
 
-            let content = message.content
             let matchStart = range.lowerBound
             let matchEnd = range.upperBound
 
@@ -346,14 +353,16 @@ private extension ChatDrawerView {
 
     func highlightedSnippet(_ snippet: String, query: String) -> Text {
         guard let range = snippet.range(of: query, options: .caseInsensitive) else {
-            return Text(snippet)
+            return Text(snippet).foregroundColor(.secondary)
         }
 
         let before = String(snippet[snippet.startIndex..<range.lowerBound])
         let match = String(snippet[range])
         let after = String(snippet[range.upperBound..<snippet.endIndex])
 
-        return Text(before) + Text(match).bold() + Text(after)
+        return Text(before).foregroundColor(.secondary)
+            + Text(match).bold().foregroundColor(.primary)
+            + Text(after).foregroundColor(.secondary)
     }
 }
 
