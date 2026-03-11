@@ -7,56 +7,28 @@ struct NewNoteSheet: View {
     @Bindable var meeting: Meeting
 
     private let coordinator = iOSRecordingCoordinator.shared
-    @State private var recordingPhase: RecordingPhase = .idle
-    @State private var elapsedSeconds: Int = 0
     @State private var selectedDetent: PresentationDetent = .fraction(0.7)
     @State private var currentPage: NotePage = .notes
     @FocusState private var isEditing: Bool
     @State private var enhancer = NoteEnhancer()
-    @State private var pendingTemplate: NoteTemplate?
-    @State private var showReenhanceAlert = false
-
-    enum RecordingPhase { case idle, recording, paused }
 
     var body: some View {
         VStack(spacing: 0) {
             sheetToolbar
 
-            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, notesFocus: $isEditing) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            TextField("New Note", text: $meeting.title)
-                                .textFieldStyle(.automatic)
-                                .font(.system(.title, design: .serif))
-                                .focused($isEditing)
-
-                            NoteToggle(
-                                showingEnhanced: $enhancer.showingEnhanced,
-                                isLoading: enhancer.isAugmenting,
-                                hasTranscript: !meeting.rawTranscript.isEmpty,
-                                onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
-                                onSelectTemplate: { template in
-                                    if meeting.augmentedNotes.isEmpty {
-                                        enhancer.enhance(meeting: meeting, template: template)
-                                    } else {
-                                        pendingTemplate = template
-                                        showReenhanceAlert = true
-                                    }
-                                }
-                            )
-                        }
-                        .padding(.horizontal, 16)
-
-                        if let error = enhancer.augmentError {
-                            Text(error)
-                                .font(.caption2)
-                                .foregroundStyle(.red)
-                                .padding(.horizontal, 16)
-                        }
+                        NoteHeaderView(meeting: meeting, enhancer: enhancer)
+                            .focused($isEditing)
+                            .padding(.horizontal, 16)
 
                         if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                            EnhancedNotesView(text: $meeting.augmentedNotes)
+                            TextEditor(text: $meeting.augmentedNotes)
+                                .font(.system(size: 17))
+                                .scrollContentBackground(.hidden)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 8)
                         } else {
                             notesEditor
                                 .padding(.horizontal, 12)
@@ -76,48 +48,22 @@ struct NewNoteSheet: View {
                     .padding(.bottom, 4)
             }
 
-            recordingBar
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+            RecordingBar(meeting: meeting, isEditing: Binding(get: { isEditing }, set: { isEditing = $0 })) {
+                endRecording()
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
-        .background(AppTheme.inputFill)
+        .background(AppTheme.surface)
         .presentationDetents([.fraction(0.7), .large], selection: $selectedDetent)
         .presentationDragIndicator(.visible)
-        .presentationBackground(AppTheme.inputFill)
+        .presentationBackground(AppTheme.surface)
         .presentationContentInteraction(.scrolls)
-        .alert("Re-enhance notes?", isPresented: $showReenhanceAlert) {
-            Button("Cancel", role: .cancel) { pendingTemplate = nil }
-            Button("Re-enhance", role: .destructive) {
-                if let template = pendingTemplate {
-                    enhancer.enhance(meeting: meeting, template: template)
-                    pendingTemplate = nil
-                }
-            }
-        } message: {
-            Text("Your current enhanced notes will be replaced.")
-        }
         .onChange(of: isEditing) { _, focused in
             if focused { selectedDetent = .large }
         }
         .onChange(of: currentPage) { _, newPage in
             if newPage == .notes { isEditing = true }
-        }
-        .task(id: recordingPhase) {
-            guard recordingPhase == .recording else { return }
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(for: .seconds(1))
-                    elapsedSeconds = Int(coordinator.totalElapsedSeconds)
-                } catch {
-                    break
-                }
-            }
-        }
-        .task {
-            // Auto-start recording if enabled in settings
-            if AppSettings.shared.autoRecord, recordingPhase == .idle {
-                startRecording()
-            }
         }
     }
 }
@@ -173,83 +119,6 @@ private extension NewNoteSheet {
     }
 }
 
-// MARK: - Recording Bar
-
-private extension NewNoteSheet {
-    var recordingBar: some View {
-        Group {
-            switch recordingPhase {
-            case .idle: idleBar
-            case .recording: activeBar
-            case .paused: pausedBar
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: recordingPhase)
-    }
-
-    var idleBar: some View {
-        HStack {
-            CapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
-                Haptic.impact(.medium)
-                startRecording()
-            }
-            if isEditing {
-                CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
-                    Haptic.impact(.medium)
-                    isEditing = false
-                }
-            }
-        }
-    }
-
-    var activeBar: some View {
-        HStack {
-            CapsuleButton(icon: "pause.fill", style: .darkOutline) {
-                Haptic.impact(.medium)
-                pauseRecording()
-            }
-
-            Spacer()
-
-            Text(formattedTime)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(AppTheme.accent)
-
-            Spacer()
-
-            endOrDismissKeyboardButton
-        }
-    }
-
-    var pausedBar: some View {
-        HStack {
-            CapsuleButton(icon: "play.fill", style: .darkOutline) {
-                Haptic.impact(.medium)
-                resumeRecording()
-            }
-
-            Spacer()
-
-            endOrDismissKeyboardButton
-        }
-    }
-
-    @ViewBuilder
-    var endOrDismissKeyboardButton: some View {
-        if isEditing {
-            CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline) {
-                Haptic.impact(.medium)
-                isEditing = false
-            }
-        } else {
-            CapsuleButton("End", style: .cream) {
-                Haptic.impact(.medium)
-                endRecording()
-            }
-        }
-    }
-}
-
 // MARK: - Computed
 
 private extension NewNoteSheet {
@@ -258,43 +127,11 @@ private extension NewNoteSheet {
             || !meeting.userNotes.isEmpty
             || !meeting.rawTranscript.isEmpty
     }
-
-    var formattedTime: String {
-        let m = elapsedSeconds / 60
-        let s = elapsedSeconds % 60
-        return String(format: "%02d:%02d", m, s)
-    }
 }
 
 // MARK: - Actions
 
 private extension NewNoteSheet {
-    func startRecording() {
-        Task {
-            await coordinator.startRecording(meeting: meeting)
-            if coordinator.isRecording {
-                recordingPhase = .recording
-            }
-        }
-    }
-
-    func pauseRecording() {
-        Task {
-            await coordinator.pauseRecording()
-            elapsedSeconds = Int(coordinator.totalElapsedSeconds)
-            recordingPhase = .paused
-        }
-    }
-
-    func resumeRecording() {
-        Task {
-            await coordinator.startRecording(meeting: meeting)
-            if coordinator.isRecording {
-                recordingPhase = .recording
-            }
-        }
-    }
-
     func endRecording() {
         Task {
             await coordinator.stopRecording()

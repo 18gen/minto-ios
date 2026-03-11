@@ -11,12 +11,10 @@ struct NotepadView: View {
     @State private var chatPresentation: ChatPresentation?
 
     @State private var enhancer = NoteEnhancer()
-    @State private var pendingTemplate: NoteTemplate?
-    @State private var showReenhanceAlert = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, notesFocus: $notesFocused) {
                 content
             }
             NotepadBottomBar(
@@ -40,17 +38,6 @@ struct NotepadView: View {
                 initialRecipeTint: presentation.initialRecipeTint
             )
         }
-        .alert("Re-enhance notes?", isPresented: $showReenhanceAlert) {
-            Button("Cancel", role: .cancel) { pendingTemplate = nil }
-            Button("Re-enhance", role: .destructive) {
-                if let template = pendingTemplate {
-                    enhancer.enhance(meeting: meeting, template: template)
-                    pendingTemplate = nil
-                }
-            }
-        } message: {
-            Text("Your current enhanced notes will be replaced.")
-        }
         .onAppear {
             if !meeting.augmentedNotes.isEmpty {
                 enhancer.showingEnhanced = true
@@ -58,7 +45,7 @@ struct NotepadView: View {
         }
     }
 
-    private func openChat(prompt: String, recipeLabel: String?, recipeTint: AppTheme.PromptTint? = nil) {
+    private func openChat(prompt: String, recipeLabel: String?, recipeTint: Tint? = nil) {
         Haptic.impact(.light)
         var context = ""
         if !meeting.userNotes.isEmpty {
@@ -68,13 +55,12 @@ struct NotepadView: View {
             context += "文字起こし:\n\(meeting.rawTranscript)"
         }
 
-        let conv = ChatConversation(meetingsContext: context)
-        modelContext.insert(conv)
-        chatPresentation = ChatPresentation(
-            conversation: conv,
-            initialPrompt: prompt,
-            initialRecipeLabel: recipeLabel,
-            initialRecipeTint: recipeTint
+        chatPresentation = ChatFactory.makePresentation(
+            in: modelContext,
+            meetingsContext: context,
+            prompt: prompt,
+            recipeLabel: recipeLabel,
+            recipeTint: recipeTint
         )
     }
 }
@@ -84,19 +70,24 @@ struct NotepadView: View {
 private extension NotepadView {
     var content: some View {
         VStack(spacing: 5) {
-            metadataRow
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+            VStack(spacing: 10) {
+                NoteHeaderView(meeting: meeting, enhancer: enhancer)
 
-            if let error = enhancer.augmentError {
-                Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
-                    .padding(.horizontal, 16)
+                HStack(spacing: 4) {
+                    Label(dateBadgeText, systemImage: "calendar")
+                        .metadataButtonStyle()
+                    Spacer()
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
 
             if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                EnhancedNotesView(text: $meeting.augmentedNotes)
+                TextEditor(text: $meeting.augmentedNotes)
+                    .font(.system(size: 17))
+                    .scrollContentBackground(.hidden)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
                     .focused($notesFocused)
             } else {
                 TextEditor(text: $meeting.userNotes)
@@ -108,37 +99,6 @@ private extension NotepadView {
             }
         }
         .padding(.bottom, 54)
-    }
-
-    var metadataRow: some View {
-        VStack(spacing: 10) {
-            TextField("New Note", text: $meeting.title)
-                .textFieldStyle(.plain)
-                .font(.system(.title, design: .serif))
-                .foregroundStyle(.primary)
-
-            HStack(spacing: 4) {
-                Label(dateBadgeText, systemImage: "calendar")
-                    .metadataButtonStyle()
-
-                Spacer()
-
-                NoteToggle(
-                    showingEnhanced: $enhancer.showingEnhanced,
-                    isLoading: enhancer.isAugmenting,
-                    hasTranscript: !meeting.rawTranscript.isEmpty,
-                    onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
-                    onSelectTemplate: { template in
-                        if meeting.augmentedNotes.isEmpty {
-                            enhancer.enhance(meeting: meeting, template: template)
-                        } else {
-                            pendingTemplate = template
-                            showReenhanceAlert = true
-                        }
-                    }
-                )
-            }
-        }
     }
 
     @ToolbarContentBuilder

@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import UIKit
 
 enum NotePage: Int, CaseIterable {
     case notes = 0
@@ -10,6 +9,7 @@ enum NotePage: Int, CaseIterable {
 struct NoteTranscriptPager<NotesContent: View>: View {
     @Binding var currentPage: NotePage
     @Bindable var meeting: Meeting
+    var notesFocus: FocusState<Bool>.Binding
     @ViewBuilder var notesContent: () -> NotesContent
 
     private let coordinator = iOSRecordingCoordinator.shared
@@ -24,16 +24,13 @@ struct NoteTranscriptPager<NotesContent: View>: View {
                 notesContent()
                     .tag(NotePage.notes)
 
-                TranscriptPanelView(meeting: meeting, isInline: true)
+                TranscriptPanelView(meeting: meeting)
                     .tag(NotePage.transcript)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .onChange(of: currentPage) { _, newPage in
                 if newPage == .transcript {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
+                    notesFocus.wrappedValue = false
                 }
             }
 
@@ -45,7 +42,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
 
     private var edgeIndicator: some View {
         Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            withAnimation(AppTheme.Anim.spring) {
                 currentPage = .transcript
             }
         } label: {
@@ -60,7 +57,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
             .padding(.horizontal, 4)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.surfaceFill.opacity(0.8))
+                    .fill(AppTheme.surface.opacity(0.8))
             )
         }
         .buttonStyle(.plain)

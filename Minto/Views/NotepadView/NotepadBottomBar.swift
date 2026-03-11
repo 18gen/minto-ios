@@ -5,7 +5,7 @@ struct NotepadBottomBar: View {
     @Binding var currentPage: NotePage
     var isNotepadEditing: Bool = false
     var onDismissKeyboard: (() -> Void)?
-    var onOpenChat: ((_ text: String, _ recipeLabel: String?, _ recipeTint: AppTheme.PromptTint?) -> Void)?
+    var onOpenChat: ((_ text: String, _ recipeLabel: String?, _ recipeTint: Tint?) -> Void)?
 
     private let coordinator = iOSRecordingCoordinator.shared
     @State private var askText = ""
