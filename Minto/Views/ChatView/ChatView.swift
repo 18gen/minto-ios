@@ -13,11 +13,13 @@ struct ChatView: View {
 
     private let initialPrompt: String?
     private let initialRecipeLabel: String?
+    private let initialRecipeTint: AppTheme.PromptTint?
 
-    init(conversation: ChatConversation, initialPrompt: String? = nil, initialRecipeLabel: String? = nil) {
+    init(conversation: ChatConversation, initialPrompt: String? = nil, initialRecipeLabel: String? = nil, initialRecipeTint: AppTheme.PromptTint? = nil) {
         self._vm = State(wrappedValue: ChatViewModel(conversation: conversation))
         self.initialPrompt = initialPrompt
         self.initialRecipeLabel = initialRecipeLabel
+        self.initialRecipeTint = initialRecipeTint
     }
 
     var body: some View {
@@ -67,7 +69,7 @@ struct ChatView: View {
         }
         .task {
             if let prompt = initialPrompt {
-                await vm.sendInitialPrompt(prompt, recipeLabel: initialRecipeLabel)
+                await vm.sendInitialPrompt(prompt, recipeLabel: initialRecipeLabel, recipeTint: initialRecipeTint)
             }
         }
     }

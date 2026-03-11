@@ -33,9 +33,13 @@ final class ChatViewModel {
         isResponding = false
     }
 
-    func sendInitialPrompt(_ prompt: String, recipeLabel: String? = nil) async {
-        guard messages.isEmpty else { return }
-        await send(prompt, recipeLabel: recipeLabel)
+    func sendInitialPrompt(_ prompt: String, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) async {
+        guard !messages.contains(where: { $0.role == .assistant }) else { return }
+        if !messages.isEmpty {
+            messages.removeAll()
+            persistMessages()
+        }
+        await send(prompt, recipeLabel: recipeLabel, recipeTint: recipeTint)
     }
 
     func sendMessage(_ text: String) async {
@@ -46,11 +50,11 @@ final class ChatViewModel {
 
     func sendRecipe(_ prompt: Prompt) async {
         inputText = ""
-        await send(prompt.prompt, recipeLabel: prompt.label)
+        await send(prompt.prompt, recipeLabel: prompt.label, recipeTint: prompt.tint)
     }
 
-    private func send(_ text: String, recipeLabel: String? = nil) async {
-        let userMsg = ChatMessage(role: .user, content: text, recipeLabel: recipeLabel)
+    private func send(_ text: String, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) async {
+        let userMsg = ChatMessage(role: .user, content: text, recipeLabel: recipeLabel, recipeTint: recipeTint)
         messages.append(userMsg)
 
         // Auto-title from first user message

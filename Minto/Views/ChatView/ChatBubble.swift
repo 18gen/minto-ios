@@ -6,6 +6,7 @@ struct ChatBubble: View {
 
     @State private var copied = false
     private var isUser: Bool { message.role == .user }
+    private var recipeColor: Color { message.recipeTint?.color ?? AppTheme.primary }
 
     var body: some View {
         if isUser {
@@ -14,9 +15,9 @@ struct ChatBubble: View {
 
                 if let recipeLabel = message.recipeLabel {
                     HStack(spacing: 8) {
-                        SlashBadge(color: AppTheme.primary)
+                        SlashBadge(color: recipeColor)
                         Text(recipeLabel)
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(.white)
                     }
                     .padding(.horizontal, 14)
@@ -25,7 +26,7 @@ struct ChatBubble: View {
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(AppTheme.primary.opacity(0.3), lineWidth: 1)
+                            .stroke(recipeColor.opacity(0.3), lineWidth: 1)
                     )
                 } else {
                     Text(message.content)
