@@ -13,6 +13,8 @@ struct NewNoteSheet: View {
     @State private var currentPage: NotePage = .notes
     @FocusState private var isEditing: Bool
     @State private var enhancer = NoteEnhancer()
+    @State private var pendingTemplate: NoteTemplate?
+    @State private var showReenhanceAlert = false
 
     enum RecordingPhase { case idle, recording, paused }
 
@@ -34,7 +36,14 @@ struct NewNoteSheet: View {
                                 isLoading: enhancer.isAugmenting,
                                 hasTranscript: !meeting.rawTranscript.isEmpty,
                                 onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
-                                onSelectTemplate: { enhancer.enhance(meeting: meeting, template: $0) }
+                                onSelectTemplate: { template in
+                                    if meeting.augmentedNotes.isEmpty {
+                                        enhancer.enhance(meeting: meeting, template: template)
+                                    } else {
+                                        pendingTemplate = template
+                                        showReenhanceAlert = true
+                                    }
+                                }
                             )
                         }
                         .padding(.horizontal, 16)
@@ -47,7 +56,7 @@ struct NewNoteSheet: View {
                         }
 
                         if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                            EnhancedNotesView(text: meeting.augmentedNotes)
+                            EnhancedNotesView(text: $meeting.augmentedNotes)
                         } else {
                             notesEditor
                                 .padding(.horizontal, 12)
@@ -76,6 +85,17 @@ struct NewNoteSheet: View {
         .presentationDragIndicator(.visible)
         .presentationBackground(AppTheme.inputFill)
         .presentationContentInteraction(.scrolls)
+        .alert("Re-enhance notes?", isPresented: $showReenhanceAlert) {
+            Button("Cancel", role: .cancel) { pendingTemplate = nil }
+            Button("Re-enhance", role: .destructive) {
+                if let template = pendingTemplate {
+                    enhancer.enhance(meeting: meeting, template: template)
+                    pendingTemplate = nil
+                }
+            }
+        } message: {
+            Text("Your current enhanced notes will be replaced.")
+        }
         .onChange(of: isEditing) { _, focused in
             if focused { selectedDetent = .large }
         }

@@ -1,14 +1,13 @@
 import SwiftUI
 
 struct EnhancedNotesView: View {
-    let text: String
+    @Binding var text: String
 
     var body: some View {
-        Text(text)
+        TextEditor(text: $text)
             .font(.system(size: 17))
-            .foregroundStyle(AppTheme.textSecondary)
-            .textSelection(.enabled)
+            .scrollContentBackground(.hidden)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 8)
     }
 }

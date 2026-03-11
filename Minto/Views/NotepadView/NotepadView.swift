@@ -8,11 +8,11 @@ struct NotepadView: View {
     @State private var currentPage: NotePage = .notes
     @FocusState private var notesFocused: Bool
 
-    @State private var chatConversation: ChatConversation?
-    @State private var chatInitialPrompt: String?
-    @State private var chatInitialRecipeLabel: String?
+    @State private var chatPresentation: ChatPresentation?
 
     @State private var enhancer = NoteEnhancer()
+    @State private var pendingTemplate: NoteTemplate?
+    @State private var showReenhanceAlert = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -24,21 +24,32 @@ struct NotepadView: View {
                 currentPage: $currentPage,
                 isNotepadEditing: notesFocused,
                 onDismissKeyboard: { notesFocused = false },
-                onOpenChat: { text, recipeLabel in
-                    openChat(prompt: text, recipeLabel: recipeLabel)
+                onOpenChat: { text, recipeLabel, recipeTint in
+                    openChat(prompt: text, recipeLabel: recipeLabel, recipeTint: recipeTint)
                 }
             )
         }
         .background(AppTheme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
-        .fullScreenCover(item: $chatConversation) { conv in
+        .fullScreenCover(item: $chatPresentation) { presentation in
             ChatView(
-                conversation: conv,
-                initialPrompt: chatInitialPrompt,
-                initialRecipeLabel: chatInitialRecipeLabel
+                conversation: presentation.conversation,
+                initialPrompt: presentation.initialPrompt,
+                initialRecipeLabel: presentation.initialRecipeLabel,
+                initialRecipeTint: presentation.initialRecipeTint
             )
-            .id(conv.persistentModelID)
+        }
+        .alert("Re-enhance notes?", isPresented: $showReenhanceAlert) {
+            Button("Cancel", role: .cancel) { pendingTemplate = nil }
+            Button("Re-enhance", role: .destructive) {
+                if let template = pendingTemplate {
+                    enhancer.enhance(meeting: meeting, template: template)
+                    pendingTemplate = nil
+                }
+            }
+        } message: {
+            Text("Your current enhanced notes will be replaced.")
         }
         .onAppear {
             if !meeting.augmentedNotes.isEmpty {
@@ -47,7 +58,7 @@ struct NotepadView: View {
         }
     }
 
-    private func openChat(prompt: String, recipeLabel: String?) {
+    private func openChat(prompt: String, recipeLabel: String?, recipeTint: AppTheme.PromptTint? = nil) {
         Haptic.impact(.light)
         var context = ""
         if !meeting.userNotes.isEmpty {
@@ -59,9 +70,12 @@ struct NotepadView: View {
 
         let conv = ChatConversation(meetingsContext: context)
         modelContext.insert(conv)
-        chatInitialPrompt = prompt
-        chatInitialRecipeLabel = recipeLabel
-        chatConversation = conv
+        chatPresentation = ChatPresentation(
+            conversation: conv,
+            initialPrompt: prompt,
+            initialRecipeLabel: recipeLabel,
+            initialRecipeTint: recipeTint
+        )
     }
 }
 
@@ -82,9 +96,8 @@ private extension NotepadView {
             }
 
             if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                ScrollView {
-                    EnhancedNotesView(text: meeting.augmentedNotes)
-                }
+                EnhancedNotesView(text: $meeting.augmentedNotes)
+                    .focused($notesFocused)
             } else {
                 TextEditor(text: $meeting.userNotes)
                     .focused($notesFocused)
@@ -115,7 +128,14 @@ private extension NotepadView {
                     isLoading: enhancer.isAugmenting,
                     hasTranscript: !meeting.rawTranscript.isEmpty,
                     onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
-                    onSelectTemplate: { enhancer.enhance(meeting: meeting, template: $0) }
+                    onSelectTemplate: { template in
+                        if meeting.augmentedNotes.isEmpty {
+                            enhancer.enhance(meeting: meeting, template: template)
+                        } else {
+                            pendingTemplate = template
+                            showReenhanceAlert = true
+                        }
+                    }
                 )
             }
         }
