@@ -70,7 +70,7 @@ final class ChatViewModel {
         messages.append(userMsg)
 
         // Auto-title from first user message
-        if conversation.title == "New Chat" {
+        if conversation.title.isEmpty || conversation.title == "New Chat" {
             conversation.title = String(text.prefix(40))
         }
 
@@ -97,7 +97,7 @@ final class ChatViewModel {
             }
         } catch {
             if let idx = messages.firstIndex(where: { $0.id == thinkingId }) {
-                messages[idx].content = "Error: \(error.localizedDescription)"
+                messages[idx].content = L("chat.error", error.localizedDescription)
                 messages[idx].isLoading = false
             }
         }

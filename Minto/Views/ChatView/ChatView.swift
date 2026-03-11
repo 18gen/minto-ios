@@ -39,7 +39,7 @@ struct ChatView: View {
         } content: {
             NavigationStack {
                 chatContent
-                    .navigationTitle(vm.conversation.title == "New Chat" ? "AI Assistant" : vm.conversation.title)
+                    .navigationTitle(vm.conversation.title.isEmpty || vm.conversation.title == "New Chat" ? L("nav.aiAssistant") : vm.conversation.title)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {

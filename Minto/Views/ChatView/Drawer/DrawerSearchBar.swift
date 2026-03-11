@@ -13,7 +13,7 @@ struct DrawerSearchBar: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("Search", text: $searchText)
+                TextField(L("placeholder.search"), text: $searchText)
                     .font(.system(size: 17))
                     .focused(searchFocused)
                     .submitLabel(.search)

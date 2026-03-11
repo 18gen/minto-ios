@@ -72,7 +72,7 @@ private extension ChatDrawerView {
     var emptyState: some View {
         VStack(spacing: 8) {
             Spacer()
-            Text("No conversations yet")
+            Text(L("empty.noConversations"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -115,7 +115,7 @@ private extension ChatDrawerView {
             } else if searchResults.isEmpty {
                 VStack(spacing: 8) {
                     Spacer()
-                    Text("No results")
+                    Text(L("empty.noResults"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -144,7 +144,7 @@ private extension ChatDrawerView {
             onSelect(conv)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(conv.title)
+                Text(conv.title.isEmpty ? L("chat.newChat") : conv.title)
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -223,7 +223,7 @@ private struct ConversationContextMenu: ViewModifier {
             Button(role: .destructive) {
                 modelContext.delete(conversation)
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(L("button.delete"), systemImage: "trash")
             }
         } preview: {
             let messages = conversation.messages.filter { !$0.isLoading && !$0.content.isEmpty }
