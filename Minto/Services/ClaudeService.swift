@@ -88,9 +88,9 @@ actor ClaudeService {
         return try await sendRequest(systemPrompt: systemPrompt, userMessage: context)
     }
 
-    func enhanceNotes(userNotes: String, transcript: String, toneMode: String, template: NoteTemplate = .auto, language: AppLanguage = .ja) async throws -> String {
+    func enhanceNotes(userNotes: String, transcript: String, template: NoteTemplate = .auto, language: AppLanguage = .ja) async throws -> String {
         let hasUserNotes = !userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let systemPrompt = buildEnhanceSystemPrompt(hasUserNotes: hasUserNotes, toneMode: toneMode, template: template, language: language)
+        let systemPrompt = buildEnhanceSystemPrompt(hasUserNotes: hasUserNotes, template: template, language: language)
 
         let notesLabel = language == .ja ? "ユーザーのメモ" : "User Notes"
         let transcriptLabel = language == .ja ? "文字起こし" : "Transcript"
@@ -152,23 +152,7 @@ actor ClaudeService {
 
     // MARK: - Private
 
-    private func buildEnhanceSystemPrompt(hasUserNotes: Bool, toneMode: String, template: NoteTemplate, language: AppLanguage) -> String {
-        let toneInstruction: String
-        switch language {
-        case .ja:
-            toneInstruction = switch toneMode {
-            case "casual": "カジュアルな口調で書いてください。"
-            case "formal": "敬語を使った格式高い文体で書いてください。"
-            default: "です/ます体で書いてください。"
-            }
-        case .en:
-            toneInstruction = switch toneMode {
-            case "casual": "Write in a casual, conversational tone."
-            case "formal": "Write in a formal, polished tone."
-            default: "Write in a professional tone."
-            }
-        }
-
+    private func buildEnhanceSystemPrompt(hasUserNotes: Bool, template: NoteTemplate, language: AppLanguage) -> String {
         let templateInstruction = template.formatInstruction(for: language)
         if !templateInstruction.isEmpty {
             return switch language {
@@ -176,7 +160,6 @@ actor ClaudeService {
                 """
                 あなたはノート作成アシスタントです。
                 \(hasUserNotes ? "ユーザーのメモと" : "")会議の文字起こしから、指定された形式でノートを作成してください。
-                \(toneInstruction)
 
                 \(templateInstruction)
 
@@ -186,7 +169,6 @@ actor ClaudeService {
                 """
                 You are a note-taking assistant.
                 Create notes from the \(hasUserNotes ? "user's notes and the " : "")meeting transcript in the specified format.
-                \(toneInstruction)
 
                 \(templateInstruction)
 
@@ -199,7 +181,6 @@ actor ClaudeService {
                 """
                 あなたはノート強化アシスタントです。
                 ユーザーが会議中に書いたメモを、文字起こしの内容を使って強化してください。
-                \(toneInstruction)
 
                 以下のルール：
                 1. ユーザーのメモの構造・箇条書き・順序をできるだけ保つ
@@ -214,7 +195,6 @@ actor ClaudeService {
                 """
                 You are a note enhancement assistant.
                 Enhance the user's meeting notes using the transcript.
-                \(toneInstruction)
 
                 Rules:
                 1. Preserve the structure, bullet points, and ordering of the user's notes
@@ -232,7 +212,6 @@ actor ClaudeService {
                 """
                 あなたはノート作成アシスタントです。
                 会議の文字起こしから、構造化されたノートを作成してください。
-                \(toneInstruction)
 
                 以下のルール：
                 - 重要なポイントを箇条書きでまとめる
@@ -244,7 +223,6 @@ actor ClaudeService {
                 """
                 You are a note-taking assistant.
                 Create structured notes from the meeting transcript.
-                \(toneInstruction)
 
                 Rules:
                 - Summarize key points as bullet points

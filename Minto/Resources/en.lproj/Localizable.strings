@@ -66,12 +66,8 @@
 
 // Settings
 "settings.language" = "Language";
-"settings.defaultTone" = "Default Tone";
 "settings.autoRecord" = "Auto-record when meeting starts";
 "settings.deleteAllData" = "Delete All Data";
-"settings.toneCasual" = "Casual (タメ口)";
-"settings.toneBusiness" = "Business (です/ます)";
-"settings.toneFormal" = "Formal (敬語)";
 
 // Language Display Names
 "language.ja" = "Japanese (日本語)";

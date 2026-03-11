@@ -16,7 +16,6 @@ final class NoteEnhancer {
                 let result = try await ClaudeService.shared.enhanceNotes(
                     userNotes: meeting.userNotes,
                     transcript: meeting.rawTranscript,
-                    toneMode: meeting.toneMode,
                     template: template,
                     language: AppSettings.shared.language
                 )

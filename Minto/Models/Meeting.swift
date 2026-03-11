@@ -11,7 +11,6 @@ final class Meeting {
     var rawTranscript: String
     var augmentedNotes: String
 
-    var toneMode: String
     var status: String
 
     /// JSON-encoded [String: String] mapping speaker index → display name.
@@ -25,8 +24,7 @@ final class Meeting {
 
     init(
         title: String = "New Meeting",
-        startDate: Date = .now,
-        toneMode: String = "business"
+        startDate: Date = .now
     ) {
         self.title = title
         self.startDate = startDate
@@ -34,7 +32,6 @@ final class Meeting {
         self.userNotes = ""
         self.rawTranscript = ""
         self.augmentedNotes = ""
-        self.toneMode = toneMode
         self.status = "idle"
         self.speakerNamesData = nil
         self.userSpeakerIndex = nil

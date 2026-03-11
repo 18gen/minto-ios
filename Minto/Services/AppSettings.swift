@@ -12,9 +12,6 @@ final class AppSettings {
     var language: AppLanguage {
         didSet { defaults.set(language.rawValue, forKey: "language") }
     }
-    var defaultToneMode: String {
-        didSet { defaults.set(defaultToneMode, forKey: "defaultToneMode") }
-    }
     var autoRecord: Bool {
         didSet { defaults.set(autoRecord, forKey: "autoRecord") }
     }
@@ -169,7 +166,6 @@ final class AppSettings {
 
     private init() {
         self.language = AppLanguage(rawValue: defaults.string(forKey: "language") ?? "") ?? .ja
-        self.defaultToneMode = defaults.string(forKey: "defaultToneMode") ?? "business"
         self.autoRecord = defaults.bool(forKey: "autoRecord")
     }
 }

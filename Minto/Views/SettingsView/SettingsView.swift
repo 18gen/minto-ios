@@ -12,12 +12,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Picker(L("settings.defaultTone"), selection: $settings.defaultToneMode) {
-                    Text(L("settings.toneCasual")).tag("casual")
-                    Text(L("settings.toneBusiness")).tag("business")
-                    Text(L("settings.toneFormal")).tag("formal")
-                }
-
                 Toggle(L("settings.autoRecord"), isOn: $settings.autoRecord)
             }
         }
