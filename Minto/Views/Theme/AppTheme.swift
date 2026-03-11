@@ -8,8 +8,8 @@ enum AppTheme {
     static let background = Color.black
 
     // recording capsule
-    static let creamCTA = Color(red: 0.93, green: 0.90, blue: 0.85)
-    static let darkCapsule = Color(white: 0.12)
+    static let ctaFill = Color(red: 0.93, green: 0.90, blue: 0.85)
+    static let surfaceElevated = Color(white: 0.12)
 
     // speaker diarization
     static let speakerColors: [Color] = [
@@ -25,24 +25,21 @@ enum AppTheme {
     static let userSpeakerColor: Color = accent
 
     // surfaces
-    static let surfaceFill = Color(white: 0.15)
-    static let inputFill = Color(white: 0.15)
+    static let surface = Color(white: 0.15)
     static let surfaceStroke = Color.white.opacity(0.10)
 
     // text
     static let textPrimary: Color = .primary
     static let textSecondary: Color = .secondary
     static let textTertiary: Color = .primary.opacity(0.45)
+}
 
-    enum PromptTint: String, Codable, CaseIterable {
-        case mint, green, cyan
-
-        var color: Color {
-            switch self {
-            case .mint:  return AppTheme.primary
-            case .green: return Color(red: 0.204, green: 0.780, blue: 0.349) // #34C759
-            case .cyan:  return Color(red: 0.196, green: 0.678, blue: 0.902) // #32ADE6
-            }
+extension Tint {
+    var color: Color {
+        switch self {
+        case .mint:  return AppTheme.primary
+        case .green: return Color(red: 0.204, green: 0.780, blue: 0.349) // #34C759
+        case .cyan:  return Color(red: 0.196, green: 0.678, blue: 0.902) // #32ADE6
         }
     }
 }
