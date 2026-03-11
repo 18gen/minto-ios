@@ -13,9 +13,9 @@ struct ChatView: View {
 
     private let initialPrompt: String?
     private let initialRecipeLabel: String?
-    private let initialRecipeTint: AppTheme.PromptTint?
+    private let initialRecipeTint: Tint?
 
-    init(conversation: ChatConversation, initialPrompt: String? = nil, initialRecipeLabel: String? = nil, initialRecipeTint: AppTheme.PromptTint? = nil) {
+    init(conversation: ChatConversation, initialPrompt: String? = nil, initialRecipeLabel: String? = nil, initialRecipeTint: Tint? = nil) {
         self._vm = State(wrappedValue: ChatViewModel(conversation: conversation))
         self.initialPrompt = initialPrompt
         self.initialRecipeLabel = initialRecipeLabel
@@ -95,10 +95,10 @@ struct ChatView: View {
                 .padding(.top, 16)
             }
             .onChange(of: vm.messages.count) {
-                DispatchQueue.main.async { scrollToBottom(proxy) }
+                scrollToBottom(proxy)
             }
             .onChange(of: vm.messages.last?.isLoading) {
-                DispatchQueue.main.async { scrollToBottom(proxy) }
+                scrollToBottom(proxy)
             }
             .onTapGesture { inputFocused = false }
             .safeAreaInset(edge: .bottom) {

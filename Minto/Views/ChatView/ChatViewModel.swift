@@ -33,7 +33,7 @@ final class ChatViewModel {
         isResponding = false
     }
 
-    func sendInitialPrompt(_ prompt: String, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) async {
+    func sendInitialPrompt(_ prompt: String, recipeLabel: String? = nil, recipeTint: Tint? = nil) async {
         guard !messages.contains(where: { $0.role == .assistant }) else { return }
         if !messages.isEmpty {
             messages.removeAll()
@@ -53,7 +53,7 @@ final class ChatViewModel {
         await send(prompt.prompt, recipeLabel: prompt.label, recipeTint: prompt.tint)
     }
 
-    private func send(_ text: String, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) async {
+    private func send(_ text: String, recipeLabel: String? = nil, recipeTint: Tint? = nil) async {
         let userMsg = ChatMessage(role: .user, content: text, recipeLabel: recipeLabel, recipeTint: recipeTint)
         messages.append(userMsg)
 
