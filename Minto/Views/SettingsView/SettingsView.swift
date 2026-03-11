@@ -5,23 +5,23 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Defaults") {
-                Picker("Language", selection: $settings.language) {
+            Section(L("section.defaults")) {
+                Picker(L("settings.language"), selection: $settings.language) {
                     ForEach(AppLanguage.allCases) { lang in
                         Text(lang.displayName).tag(lang)
                     }
                 }
 
-                Picker("Default Tone", selection: $settings.defaultToneMode) {
-                    Text("Casual (\u{30BF}\u{30E1}\u{53E3})").tag("casual")
-                    Text("Business (\u{3067}\u{3059}/\u{307E}\u{3059})").tag("business")
-                    Text("Formal (\u{656C}\u{8A9E})").tag("formal")
+                Picker(L("settings.defaultTone"), selection: $settings.defaultToneMode) {
+                    Text(L("settings.toneCasual")).tag("casual")
+                    Text(L("settings.toneBusiness")).tag("business")
+                    Text(L("settings.toneFormal")).tag("formal")
                 }
 
-                Toggle("Auto-record when meeting starts", isOn: $settings.autoRecord)
+                Toggle(L("settings.autoRecord"), isOn: $settings.autoRecord)
             }
         }
-        .navigationTitle("Settings")
+        .navigationTitle(L("nav.settings"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

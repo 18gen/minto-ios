@@ -22,7 +22,7 @@ struct HistorySection: View {
                             Haptic.notification(.warning)
                             onDelete?(meeting)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label(L("button.delete"), systemImage: "trash")
                         }
                     }
                 }
@@ -44,7 +44,7 @@ struct HistorySection: View {
             )
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(meeting.title.isEmpty ? "New Note" : meeting.title)
+                Text(meeting.title.isEmpty ? L("placeholder.newNote") : meeting.title)
                     .font(.headline)
                     .lineLimit(1)
 
@@ -79,7 +79,7 @@ struct HistorySection: View {
             return notes.components(separatedBy: .newlines).first
         }
         if hasTranscript(meeting) {
-            return "Transcript available"
+            return L("transcript.available")
         }
         return nil
     }

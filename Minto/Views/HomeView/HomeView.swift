@@ -72,7 +72,7 @@ struct HomeView: View {
                     }
                 }
                 .background(AppTheme.background.ignoresSafeArea())
-                .navigationTitle("Minto")
+                .navigationTitle(L("nav.home"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
