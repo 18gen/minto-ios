@@ -42,7 +42,7 @@ struct RecordingBar: View {
 
     private var idleBar: some View {
         HStack {
-            CapsuleButton("Start Recording", icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
+            CapsuleButton(L("button.startRecording"), icon: "waveform", style: .cream, fullWidth: true, iconWeight: .regular) {
                 Haptic.impact(.medium)
                 startRecording()
             }
@@ -95,7 +95,7 @@ struct RecordingBar: View {
                 isEditing = false
             }
         } else {
-            CapsuleButton("End", style: .cream) {
+            CapsuleButton(L("button.end"), style: .cream) {
                 Haptic.impact(.medium)
                 onEnd()
             }

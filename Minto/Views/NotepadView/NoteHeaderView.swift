@@ -10,7 +10,7 @@ struct NoteHeaderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                TextField("New Note", text: $meeting.title)
+                TextField(L("placeholder.newNote"), text: $meeting.title)
                     .textFieldStyle(.plain)
                     .font(.system(.title, design: .serif))
                     .foregroundStyle(.primary)
@@ -38,16 +38,16 @@ struct NoteHeaderView: View {
                     .padding(.top, 8)
             }
         }
-        .alert("Re-enhance notes?", isPresented: $showReenhanceAlert) {
-            Button("Cancel", role: .cancel) { pendingTemplate = nil }
-            Button("Re-enhance", role: .destructive) {
+        .alert(L("alert.reEnhanceTitle"), isPresented: $showReenhanceAlert) {
+            Button(L("button.cancel"), role: .cancel) { pendingTemplate = nil }
+            Button(L("button.reEnhance"), role: .destructive) {
                 if let template = pendingTemplate {
                     enhancer.enhance(meeting: meeting, template: template)
                     pendingTemplate = nil
                 }
             }
         } message: {
-            Text("Your current enhanced notes will be replaced.")
+            Text(L("alert.reEnhanceMessage"))
         }
     }
 }

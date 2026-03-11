@@ -49,10 +49,10 @@ struct NotepadView: View {
         Haptic.impact(.light)
         var context = ""
         if !meeting.userNotes.isEmpty {
-            context += "ユーザーのメモ:\n\(meeting.userNotes)\n\n"
+            context += "\(L("context.userNotes"))\n\(meeting.userNotes)\n\n"
         }
         if !meeting.rawTranscript.isEmpty {
-            context += "文字起こし:\n\(meeting.rawTranscript)"
+            context += "\(L("context.transcript"))\n\(meeting.rawTranscript)"
         }
 
         chatPresentation = ChatFactory.makePresentation(
@@ -86,7 +86,7 @@ private extension NotepadView {
                 TextEditor(text: $meeting.augmentedNotes)
                     .font(.system(size: 17))
                     .scrollContentBackground(.hidden)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.horizontal, 8)
                     .focused($notesFocused)
             } else {
@@ -124,8 +124,8 @@ private extension NotepadView {
 
     var dateBadgeText: String {
         let cal = Calendar.current
-        if cal.isDateInToday(meeting.startDate) { return "Today" }
-        if cal.isDateInTomorrow(meeting.startDate) { return "Tomorrow" }
+        if cal.isDateInToday(meeting.startDate) { return L("label.today") }
+        if cal.isDateInTomorrow(meeting.startDate) { return L("label.tomorrow") }
         return meeting.startDate.formatted(date: .abbreviated, time: .shortened)
     }
 }

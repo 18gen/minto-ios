@@ -77,7 +77,7 @@ private extension NewNoteSheet {
                 Haptic.impact(.light)
                 cancelNote()
             } label: {
-                Text("Cancel")
+                Text(L("button.cancel"))
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(AppTheme.textSecondary)
             }
@@ -88,7 +88,7 @@ private extension NewNoteSheet {
                 Haptic.impact(.light)
                 endRecording()
             } label: {
-                Text("Done")
+                Text(L("button.done"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(hasContent ? AppTheme.primary : AppTheme.textTertiary)
             }
@@ -108,7 +108,7 @@ private extension NewNoteSheet {
                 .focused($isEditing)
 
             if meeting.userNotes.isEmpty {
-                Text("Write notes here...")
+                Text(L("placeholder.writeNotes"))
                     .font(.system(size: 17))
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.horizontal, 5)
