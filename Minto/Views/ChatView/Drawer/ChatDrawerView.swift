@@ -57,60 +57,12 @@ struct ChatDrawerView: View {
 
 private extension ChatDrawerView {
     var searchBar: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-
-                TextField("Search", text: $searchText)
-                    .font(.system(size: 17))
-                    .focused($searchFocused)
-                    .submitLabel(.search)
-
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 44)
-            .glassEffect(.regular, in: .capsule)
-
-            if isSearching {
-                Button {
-                    searchText = ""
-                    searchFocused = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
-                .transition(.scale.combined(with: .opacity))
-            } else {
-                Button {
-                    Haptic.impact(.light)
-                    onNewChat()
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: isSearching)
+        DrawerSearchBar(
+            searchText: $searchText,
+            searchFocused: $searchFocused,
+            isSearching: isSearching,
+            onNewChat: onNewChat
+        )
     }
 }
 
@@ -140,7 +92,7 @@ private extension ChatDrawerView {
                         .padding(.bottom, 4)
 
                     ForEach(group.conversations) { conv in
-                        conversationRow(conv)
+                        drawerRow(conv, isActive: conv.persistentModelID == currentConversation?.persistentModelID)
                     }
                 }
             }
@@ -155,7 +107,7 @@ private extension ChatDrawerView {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(conversations) { conv in
-                            conversationRow(conv)
+                            drawerRow(conv)
                         }
                     }
                     .padding(.bottom, 16)
@@ -173,7 +125,7 @@ private extension ChatDrawerView {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(searchResults, id: \.conversation.persistentModelID) { result in
-                            searchResultRow(result.conversation, snippet: result.snippet)
+                            drawerRow(result.conversation, snippet: result.snippet)
                         }
                     }
                     .padding(.bottom, 16)
@@ -186,32 +138,7 @@ private extension ChatDrawerView {
 // MARK: - Row Views
 
 private extension ChatDrawerView {
-    @ViewBuilder
-    func conversationRow(_ conv: ChatConversation) -> some View {
-        let isActive = conv.persistentModelID == currentConversation?.persistentModelID
-
-        Button {
-            Haptic.impact(.light)
-            onSelect(conv)
-        } label: {
-            HStack(spacing: 0) {
-                Text(conv.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(DrawerRowButtonStyle(isActive: isActive))
-        .modifier(ConversationContextMenu(conversation: conv, modelContext: modelContext))
-    }
-
-    @ViewBuilder
-    func searchResultRow(_ conv: ChatConversation, snippet: String?) -> some View {
+    func drawerRow(_ conv: ChatConversation, snippet: String? = nil, isActive: Bool = false) -> some View {
         Button {
             Haptic.impact(.light)
             onSelect(conv)
@@ -234,7 +161,7 @@ private extension ChatDrawerView {
             .padding(.horizontal, 8)
             .contentShape(Rectangle())
         }
-        .buttonStyle(DrawerRowButtonStyle())
+        .buttonStyle(DrawerRowButtonStyle(isActive: isActive))
         .modifier(ConversationContextMenu(conversation: conv, modelContext: modelContext))
     }
 }
