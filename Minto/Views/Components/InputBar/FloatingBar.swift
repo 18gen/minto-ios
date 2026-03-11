@@ -59,8 +59,8 @@ struct FloatingBar<Accessory: View>: View {
             .background(AppTheme.background)
         }
         .ignoresSafeArea(.keyboard)
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: askFocus.wrappedValue)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showRecipes)
+        .animation(AppTheme.Anim.springSnappy, value: askFocus.wrappedValue)
+        .animation(AppTheme.Anim.spring, value: showRecipes)
         .onChange(of: askText) {
             if askText == "/" {
                 showRecipes = true

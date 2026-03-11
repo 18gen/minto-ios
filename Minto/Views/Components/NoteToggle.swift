@@ -52,7 +52,7 @@ struct NoteToggle: View {
             .padding(3)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(AppTheme.surfaceFill)
+                    .fill(AppTheme.surface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)

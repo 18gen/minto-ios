@@ -34,8 +34,8 @@ struct DrawerContainer<Drawer: View, Content: View>: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isOpen)
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isExpanded?.wrappedValue)
+        .animation(AppTheme.Anim.spring, value: isOpen)
+        .animation(AppTheme.Anim.spring, value: isExpanded?.wrappedValue)
         .gesture(dragGesture)
     }
 

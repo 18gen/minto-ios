@@ -26,7 +26,7 @@ struct PromptsTray: View {
                 if showGridButton {
                     Button {
                         Haptic.impact(.light)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        withAnimation(AppTheme.Anim.spring) {
                             isExpanded?.wrappedValue = true
                         }
                     } label: {
@@ -34,7 +34,7 @@ struct PromptsTray: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(AppTheme.primary)
                             .frame(width: 30, height: 30)
-                            .background(AppTheme.surfaceFill)
+                            .background(AppTheme.surface)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -66,7 +66,7 @@ struct PromptsTray: View {
                 Spacer()
                 Button {
                     Haptic.impact(.light)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    withAnimation(AppTheme.Anim.spring) {
                         isExpanded?.wrappedValue = false
                     }
                 } label: {
@@ -74,7 +74,7 @@ struct PromptsTray: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 28, height: 28)
-                        .background(AppTheme.surfaceFill)
+                        .background(AppTheme.surface)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -91,7 +91,7 @@ struct PromptsTray: View {
                         onSelect(prompt)
                     } label: {
                         HStack(spacing: 10) {
-                            SlashBadge(color: prompt.color)
+                            SlashBadge(color: prompt.tint.color)
                             Text(prompt.label)
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(.primary)
@@ -108,7 +108,7 @@ struct PromptsTray: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surfaceFill)
+                .fill(AppTheme.surface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

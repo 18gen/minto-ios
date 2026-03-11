@@ -59,7 +59,7 @@ struct AskBar<Accessory: View>: View {
         .padding(.leading, 16)
         .padding(.trailing, 10)
         .padding(.vertical, isMultiLine ? 10 : 5)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(AppTheme.inputFill))
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(AppTheme.surface))
         .overlay(alignment: .bottomTrailing) {
             if shouldShowSend {
                 PromptSendButton(size: 32, action: onSend)
@@ -71,7 +71,7 @@ struct AskBar<Accessory: View>: View {
         .overlay(alignment: .topTrailing) {
             if shouldShowExpand {
                 Button {
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.80)) {
+                    withAnimation(AppTheme.Anim.springSnappy) {
                         isExpanded.toggle()
                     }
                 } label: {
@@ -90,7 +90,7 @@ struct AskBar<Accessory: View>: View {
                 .stroke(AppTheme.surfaceStroke, lineWidth: 1)
                 .blendMode(.overlay)
         )
-        .animation(.spring(response: 0.22, dampingFraction: 0.80), value: shouldShowSend)
+        .animation(AppTheme.Anim.springSnappy, value: shouldShowSend)
     }
 }
 

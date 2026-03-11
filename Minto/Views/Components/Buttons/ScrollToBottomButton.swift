@@ -14,7 +14,7 @@ struct ScrollToBottomButton: View {
                     .font(.system(size: 16))
                     .foregroundStyle(.white)
                     .frame(width: 34, height: 34)
-                    .background(AppTheme.surfaceFill)
+                    .background(AppTheme.surface)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)

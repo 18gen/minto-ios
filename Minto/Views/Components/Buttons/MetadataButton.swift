@@ -28,7 +28,7 @@ struct MetadataButtonStyle: ViewModifier {
             .symbolRenderingMode(.hierarchical)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(Capsule().fill(Color(white: 0.17)))
+            .background(Capsule().fill(AppTheme.surfaceElevated))
             .contentShape(Capsule())
     }
 }

@@ -89,8 +89,8 @@ struct CapsuleButton: View {
 
     private var fillColor: Color {
         switch style {
-        case .cream: AppTheme.creamCTA
-        case .dark, .darkOutline: AppTheme.darkCapsule
+        case .cream: AppTheme.ctaFill
+        case .dark, .darkOutline: AppTheme.surfaceElevated
         }
     }
 
