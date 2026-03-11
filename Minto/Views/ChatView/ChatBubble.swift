@@ -22,7 +22,7 @@ struct ChatBubble: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(AppTheme.surfaceFill)
+                    .background(AppTheme.surface)
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
@@ -35,7 +35,7 @@ struct ChatBubble: View {
                         .textSelection(.enabled)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(AppTheme.surfaceFill)
+                        .background(AppTheme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -50,15 +50,12 @@ struct ChatBubble: View {
                 } else {
                     Markdown(message.content)
                         .textSelection(.enabled)
-                        .font(.system(size: 15))
+                        .markdownTheme(.chat)
 
                     Button {
                         UIPasteboard.general.string = message.content
                         Haptic.notification(.success)
                         copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            copied = false
-                        }
                     } label: {
                         Image(systemName: copied ? "checkmark" : "square.on.square")
                             .font(.system(size: 14))
@@ -70,32 +67,11 @@ struct ChatBubble: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-}
-
-// MARK: - Thinking Indicator
-
-private struct ThinkingIndicator: View {
-    @State private var animating = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            ForEach(0 ..< 3, id: \.self) { index in
-                Circle()
-                    .fill(AppTheme.textSecondary)
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(animating ? 1.0 : 0.5)
-                    .opacity(animating ? 1.0 : 0.3)
-                    .animation(
-                        .easeInOut(duration: 0.6)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.2),
-                        value: animating
-                    )
+            .task(id: copied) {
+                guard copied else { return }
+                try? await Task.sleep(for: .seconds(1.5))
+                copied = false
             }
         }
-        .frame(height: 20)
-        .onAppear { animating = true }
     }
 }
