@@ -49,14 +49,14 @@ final class ElevenLabsStreamingService: @unchecked Sendable {
 
     // MARK: - Connect
 
-    func connect() throws {
+    func connect(languageCode: String = "ja") throws {
         let apiKey = AppSettings.elevenLabsKey
         guard !apiKey.isEmpty else { throw ServiceError.noAPIKey }
 
         let queryParams = [
             "model_id=scribe_v2_realtime",
             "audio_format=pcm_16000",
-            "language_code=ja",
+            "language_code=\(languageCode)",
             "commit_strategy=vad",
             "vad_silence_threshold_secs=2.0",
             "include_timestamps=true",

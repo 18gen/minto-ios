@@ -50,7 +50,7 @@ final class DeepgramStreamingService: @unchecked Sendable {
 
     // MARK: - Connect
 
-    func connect() throws {
+    func connect(languageCode: String = "ja") throws {
         let apiKey = AppSettings.deepgramKey
         guard !apiKey.isEmpty else { throw ServiceError.noAPIKey }
 
@@ -60,7 +60,7 @@ final class DeepgramStreamingService: @unchecked Sendable {
             "sample_rate=16000",
             "channels=1",
             "diarize=true",
-            "language=ja",
+            "language=\(languageCode)",
             "smart_format=true",
             "punctuate=true",
             "interim_results=true",

@@ -27,7 +27,7 @@ actor WhisperService {
         }
     }
 
-    func transcribe(audioData: Data) async throws -> VerboseResult {
+    func transcribe(audioData: Data, languageCode: String = "ja") async throws -> VerboseResult {
         let boundary = UUID().uuidString
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -36,7 +36,7 @@ actor WhisperService {
         var body = Data()
         body.appendMultipartField(boundary: boundary, name: "file", filename: "audio.wav", mimeType: "audio/wav", data: audioData)
         body.appendMultipartField(boundary: boundary, name: "model", value: "whisper-1")
-        body.appendMultipartField(boundary: boundary, name: "language", value: "ja")
+        body.appendMultipartField(boundary: boundary, name: "language", value: languageCode)
         body.appendMultipartField(boundary: boundary, name: "response_format", value: "verbose_json")
         body.append(Data("--\(boundary)--\r\n".utf8))
         request.httpBody = body

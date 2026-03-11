@@ -31,7 +31,7 @@ actor ElevenLabsBatchService {
 
     // MARK: - Public
 
-    func transcribe(audioFileURL: URL) async throws -> BatchResult {
+    func transcribe(audioFileURL: URL, languageCode: String = "ja") async throws -> BatchResult {
         let audioData = try Data(contentsOf: audioFileURL)
 
         let boundary = UUID().uuidString
@@ -46,7 +46,7 @@ actor ElevenLabsBatchService {
                                   filename: audioFileURL.lastPathComponent,
                                   mimeType: "audio/wav", data: audioData)
         body.appendMultipartField(boundary: boundary, name: "model_id", value: "scribe_v2")
-        body.appendMultipartField(boundary: boundary, name: "language_code", value: "ja")
+        body.appendMultipartField(boundary: boundary, name: "language_code", value: languageCode)
         body.appendMultipartField(boundary: boundary, name: "diarize", value: "true")
         body.appendMultipartField(boundary: boundary, name: "timestamps_granularity", value: "word")
         body.append(Data("--\(boundary)--\r\n".utf8))
