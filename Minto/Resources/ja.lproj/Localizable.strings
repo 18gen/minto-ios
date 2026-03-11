@@ -97,6 +97,10 @@
 "alert.reEnhanceMessage" = "現在の生成済みノートが置き換えられます。";
 "alert.renameTitle" = "話者の名前を変更";
 
+// Alerts
+"alert.deleteAllTitle" = "すべてのデータを削除しますか？";
+"alert.deleteAllMessage" = "すべてのノート、文字起こし、チャット履歴が完全に削除されます。この操作は元に戻せません。";
+
 // Chat
 "chat.newChat" = "新しいチャット";
 "chat.error" = "エラー: %@";

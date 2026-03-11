@@ -97,6 +97,10 @@
 "alert.reEnhanceMessage" = "Your current enhanced notes will be replaced.";
 "alert.renameTitle" = "Rename Speaker";
 
+// Alerts
+"alert.deleteAllTitle" = "Delete All Data?";
+"alert.deleteAllMessage" = "This will permanently delete all your notes, transcripts, and chat history. This action cannot be undone.";
+
 // Chat
 "chat.newChat" = "New Chat";
 "chat.error" = "Error: %@";
