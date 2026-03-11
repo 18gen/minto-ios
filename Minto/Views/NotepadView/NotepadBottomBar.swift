@@ -17,7 +17,7 @@ struct NotepadBottomBar: View {
             recordingStatus
 
             FloatingBar(
-                prompts: Prompt.notepad,
+                prompts: Prompt.notepad(for: AppSettings.shared.language),
                 askText: $askText,
                 isAsking: $isAsking,
                 askFocus: $askFocused,

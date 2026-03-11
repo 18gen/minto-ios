@@ -109,7 +109,7 @@ struct ChatView: View {
                     .animation(.easeInOut(duration: 0.2), value: isAtBottom)
 
                     FloatingBar(
-                        prompts: Prompt.chat,
+                        prompts: Prompt.chat(for: AppSettings.shared.language),
                         askText: $vm.inputText,
                         isAsking: $vm.isResponding,
                         askFocus: $inputFocused,

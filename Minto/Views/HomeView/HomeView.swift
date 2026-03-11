@@ -50,7 +50,7 @@ struct HomeView: View {
                     .onTapGesture { askFocused = false }
 
                     FloatingBar(
-                        prompts: Prompt.home,
+                        prompts: Prompt.home(for: AppSettings.shared.language),
                         askText: $askText,
                         isAsking: .constant(false),
                         askFocus: $askFocused,

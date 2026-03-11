@@ -17,7 +17,8 @@ final class NoteEnhancer {
                     userNotes: meeting.userNotes,
                     transcript: meeting.rawTranscript,
                     toneMode: meeting.toneMode,
-                    template: template
+                    template: template,
+                    language: AppSettings.shared.language
                 )
                 meeting.augmentedNotes = result
                 showingEnhanced = true
