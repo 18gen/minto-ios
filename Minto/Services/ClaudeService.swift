@@ -21,12 +21,6 @@ actor ClaudeService {
 
     // MARK: - Public Methods
 
-    func augmentNotes(userNotes: String, transcript: String, toneMode: String) async throws -> String {
-        let systemPrompt = buildAugmentSystemPrompt(toneMode: toneMode)
-        let userMessage = buildAugmentUserMessage(userNotes: userNotes, transcript: transcript)
-        return try await sendRequest(systemPrompt: systemPrompt, userMessage: userMessage)
-    }
-
     func askQuestion(question: String, userNotes: String, transcript: String) async throws -> String {
         let systemPrompt = """
         あなたは会議アシスタントです。ユーザーの会議メモと文字起こしを元に、質問に簡潔かつ正確に回答してください。
@@ -70,6 +64,19 @@ actor ClaudeService {
         return try await sendRequest(systemPrompt: systemPrompt, userMessage: context)
     }
 
+    func enhanceNotes(userNotes: String, transcript: String, toneMode: String, template: NoteTemplate = .auto) async throws -> String {
+        let hasUserNotes = !userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let systemPrompt = buildEnhanceSystemPrompt(hasUserNotes: hasUserNotes, toneMode: toneMode, template: template)
+
+        var content = ""
+        if hasUserNotes {
+            content += "## ユーザーのメモ\n\(userNotes)\n\n"
+        }
+        content += "## 文字起こし\n\(transcript)"
+
+        return try await sendRequest(systemPrompt: systemPrompt, userMessage: content)
+    }
+
     func correctTranscript(rawTranscript: String) async throws -> String {
         let systemPrompt = """
         あなたは日本語の文字起こし校正アシスタントです。
@@ -96,6 +103,54 @@ actor ClaudeService {
     }
 
     // MARK: - Private
+
+    private func buildEnhanceSystemPrompt(hasUserNotes: Bool, toneMode: String, template: NoteTemplate) -> String {
+        let toneInstruction: String = switch toneMode {
+        case "casual": "カジュアルな口調で書いてください。"
+        case "formal": "敬語を使った格式高い文体で書いてください。"
+        default: "です/ます体で書いてください。"
+        }
+
+        let templateInstruction = template.formatInstruction
+        if !templateInstruction.isEmpty {
+            return """
+            あなたはノート作成アシスタントです。
+            \(hasUserNotes ? "ユーザーのメモと" : "")会議の文字起こしから、指定された形式でノートを作成してください。
+            \(toneInstruction)
+
+            \(templateInstruction)
+
+            ノートのみを出力。説明や前置きは不要。
+            """
+        } else if hasUserNotes {
+            return """
+            あなたはノート強化アシスタントです。
+            ユーザーが会議中に書いたメモを、文字起こしの内容を使って強化してください。
+            \(toneInstruction)
+
+            以下のルール：
+            1. ユーザーのメモの構造・箇条書き・順序をできるだけ保つ
+            2. 文字起こしから、ユーザーが書き漏らした詳細や文脈を追加する
+            3. 曖昧な部分を明確にし、不足情報を補う
+            4. ユーザーのメモの言語・トーンに合わせる
+            5. 元のメモにない新しいセクションは最小限にする
+
+            強化されたノートのみを出力。説明や前置きは不要。
+            """
+        } else {
+            return """
+            あなたはノート作成アシスタントです。
+            会議の文字起こしから、構造化されたノートを作成してください。
+            \(toneInstruction)
+
+            以下のルール：
+            - 重要なポイントを箇条書きでまとめる
+            - 決定事項やアクションアイテムがあれば明記する
+            - 簡潔で読みやすい形式にする
+            - ノートのみを出力。説明や前置きは不要。
+            """
+        }
+    }
 
     private func sendRequest(systemPrompt: String, userMessage: String) async throws -> String {
         let messages = [["role": "user", "content": userMessage]]
@@ -136,66 +191,4 @@ actor ClaudeService {
         return text
     }
 
-    private func buildAugmentSystemPrompt(toneMode: String) -> String {
-        let toneInstruction = switch toneMode {
-        case "casual":
-            """
-            タメ口（カジュアルな口調）で書いてください。です/ます体は最小限にしてください。
-            友達に話すような自然な日本語で書いてください。
-            """
-        case "formal":
-            """
-            敬語（尊敬語・謙譲語）を適切に使って書いてください。
-            ビジネス上の敬意を持った格式高い文体で書いてください。
-            """
-        default: // business
-            """
-            です/ます体で書いてください。ビジネスに適したプロフェッショナルな文体で書いてください。
-            """
-        }
-
-        return """
-        あなたは会議の議事録を整理するアシスタントです。
-        ユーザーのメモと会議の文字起こしを元に、構造化された議事録を作成してください。
-
-        \(toneInstruction)
-
-        以下の構造で出力してください：
-
-        ## 会議タイトル
-        （内容から適切なタイトルを付けてください）
-
-        ## 参加者
-        （文字起こしから判別できる範囲で）
-
-        ## 議題
-        - 主要な議題をリスト形式で
-
-        ## 議論内容
-        各議題について議論された内容を要約
-
-        ## 決定事項
-        - 会議で決定された事項をリスト形式で
-
-        ## アクションアイテム
-        - 誰が何をいつまでにやるか
-
-        ## 次のステップ
-        - 次回の会議や今後の予定
-        """
-    }
-
-    private func buildAugmentUserMessage(userNotes: String, transcript: String) -> String {
-        var message = ""
-        if !userNotes.isEmpty {
-            message += "## My Notes\n\(userNotes)\n\n"
-        }
-        if !transcript.isEmpty {
-            message += "## Meeting Transcript\n\(transcript)"
-        }
-        if message.isEmpty {
-            message = "（メモと文字起こしがまだありません）"
-        }
-        return message
-    }
 }
