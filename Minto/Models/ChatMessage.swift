@@ -7,14 +7,14 @@ struct ChatMessage: Identifiable, Equatable, Codable {
     let timestamp: Date
     var isLoading: Bool
     var recipeLabel: String?
-    var recipeTint: AppTheme.PromptTint?
+    var recipeTint: Tint?
 
     enum Role: String, Codable {
         case user
         case assistant
     }
 
-    init(id: UUID = UUID(), role: Role, content: String, timestamp: Date = .now, isLoading: Bool = false, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) {
+    init(id: UUID = UUID(), role: Role, content: String, timestamp: Date = .now, isLoading: Bool = false, recipeLabel: String? = nil, recipeTint: Tint? = nil) {
         self.id = id
         self.role = role
         self.content = content

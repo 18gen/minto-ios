@@ -5,5 +5,5 @@ struct ChatPresentation: Identifiable {
     let conversation: ChatConversation
     let initialPrompt: String?
     let initialRecipeLabel: String?
-    let initialRecipeTint: AppTheme.PromptTint?
+    let initialRecipeTint: Tint?
 }
