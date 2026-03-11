@@ -22,7 +22,7 @@ final class PostRecordingProcessor {
     }
 
     /// Run batch diarization + LLM correction on a saved audio file.
-    func process(meeting: Meeting, audioURL: URL) async -> ProcessedResult? {
+    func process(meeting: Meeting, audioURL: URL, language: AppLanguage = .ja) async -> ProcessedResult? {
         isProcessing = true
         defer {
             isProcessing = false
@@ -36,7 +36,7 @@ final class PostRecordingProcessor {
         var segments: [SegmentData] = []
 
         do {
-            let result = try await batchService.transcribe(audioFileURL: audioURL)
+            let result = try await batchService.transcribe(audioFileURL: audioURL, languageCode: language.rawValue)
             fullText = result.text
             segments = result.utterances.map { utterance in
                 SegmentData(
@@ -55,7 +55,8 @@ final class PostRecordingProcessor {
         statusMessage = "Polishing transcript..."
         do {
             fullText = try await ClaudeService.shared.correctTranscript(
-                rawTranscript: fullText
+                rawTranscript: fullText,
+                language: language
             )
         } catch {
             print("LLM correction failed: \(error.localizedDescription)")

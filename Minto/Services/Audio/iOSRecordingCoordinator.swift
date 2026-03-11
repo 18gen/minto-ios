@@ -36,6 +36,7 @@ final class iOSRecordingCoordinator {
     private var levelPollTimer: Timer?
     private let activityManager = RecordingActivityManager.shared
     private var activeMode: TranscriptionMode = .elevenLabs
+    private var activeLanguageCode: String = "ja"
     private var hasAttemptedAutoIdentify = false
 
     /// Total seconds accumulated from previous recording segments (before current active segment)
@@ -63,6 +64,7 @@ final class iOSRecordingCoordinator {
         if transcriptionMode == .elevenLabs {
             if !AppSettings.deepgramKey.isEmpty { return .deepgram }
             if !AppSettings.whisperKey.isEmpty { return .onDevice }
+            return .onDevice // No keys at all — let the guard below show an error
         }
         if transcriptionMode == .deepgram, AppSettings.deepgramKey.isEmpty {
             return .onDevice
@@ -75,6 +77,13 @@ final class iOSRecordingCoordinator {
 
     func startRecording(meeting: Meeting) async {
         recordingError = nil
+
+        // Wait for API keys if not yet fetched
+        if !AppSettings.keysFetched {
+            recordingError = "Connecting to server..."
+            await AppSettings.awaitKeysReady(timeout: 10)
+            recordingError = nil
+        }
 
         let isResume = currentMeeting === meeting && accumulatedRecordingSeconds > 0
         currentMeeting = meeting
@@ -93,10 +102,11 @@ final class iOSRecordingCoordinator {
 
         let effectiveMode = resolveTranscriptionMode()
         activeMode = effectiveMode
+        activeLanguageCode = AppSettings.shared.language.rawValue
 
         // Validate we have at least one API key
         if effectiveMode == .onDevice, AppSettings.whisperKey.isEmpty {
-            recordingError = "No API key configured. Add an ElevenLabs, Deepgram, or OpenAI key."
+            recordingError = "Unable to connect. Check your internet connection and try again."
             meeting.status = "idle"
             return
         }
@@ -135,9 +145,9 @@ final class iOSRecordingCoordinator {
             // Connect WebSocket before starting audio capture
             switch effectiveMode {
             case .elevenLabs:
-                try elevenLabsService.connect()
+                try elevenLabsService.connect(languageCode: activeLanguageCode)
             case .deepgram:
-                try deepgramService.connect()
+                try deepgramService.connect(languageCode: activeLanguageCode)
             case .onDevice:
                 break
             }
@@ -224,7 +234,8 @@ final class iOSRecordingCoordinator {
             meeting.status = "processing"
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let result = await self.postRecordingProcessor.process(meeting: meeting, audioURL: audioURL) {
+                let lang = AppLanguage(rawValue: self.activeLanguageCode) ?? .ja
+                if let result = await self.postRecordingProcessor.process(meeting: meeting, audioURL: audioURL, language: lang) {
                     self.applyPostRecordingResult(result, to: meeting)
                 }
                 meeting.status = "done"
@@ -278,8 +289,8 @@ final class iOSRecordingCoordinator {
         // Reconnect WebSocket
         do {
             switch activeMode {
-            case .elevenLabs: try elevenLabsService.connect()
-            case .deepgram: try deepgramService.connect()
+            case .elevenLabs: try elevenLabsService.connect(languageCode: activeLanguageCode)
+            case .deepgram: try deepgramService.connect(languageCode: activeLanguageCode)
             case .onDevice: break
             }
         } catch {
@@ -564,7 +575,7 @@ final class iOSRecordingCoordinator {
 
     private nonisolated func transcribeChunk(_ wavData: Data) async {
         do {
-            let result = try await whisperService.transcribe(audioData: wavData)
+            let result = try await whisperService.transcribe(audioData: wavData, languageCode: activeLanguageCode)
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return }
 
