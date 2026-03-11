@@ -10,14 +10,26 @@ final class ChatViewModel {
     private let claudeService = ClaudeService.shared
 
     private var systemPrompt: String {
-        """
-        あなたは会議アシスタントです。ユーザーの会議メモと文字起こしを元に、質問に簡潔かつ正確に回答してください。
-        回答は日本語で、要点を押さえて分かりやすく答えてください。
-        情報が不足している場合は、その旨を伝えてください。
+        let context = conversation.meetingsContext
+        return switch AppSettings.shared.language {
+        case .ja:
+            """
+            あなたは会議アシスタントです。ユーザーの会議メモと文字起こしを元に、質問に簡潔かつ正確に回答してください。
+            回答は日本語で、要点を押さえて分かりやすく答えてください。
+            情報が不足している場合は、その旨を伝えてください。
 
-        以下はユーザーの最近の会議データです:
-        \(conversation.meetingsContext)
-        """
+            以下はユーザーの最近の会議データです:
+            \(context)
+            """
+        case .en:
+            """
+            You are a meeting assistant. Answer questions concisely and accurately based on the user's meeting notes and transcript.
+            If information is insufficient, let them know.
+
+            Here is the user's recent meeting data:
+            \(context)
+            """
+        }
     }
 
     init(conversation: ChatConversation) {
