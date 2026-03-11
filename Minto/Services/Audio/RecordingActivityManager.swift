@@ -11,7 +11,7 @@ final class RecordingActivityManager {
     func startActivity(title: String, startDate: Date) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        let attributes = RecordingAttributes(meetingTitle: title.isEmpty ? "New Note" : title)
+        let attributes = RecordingAttributes(meetingTitle: title.isEmpty ? L("placeholder.newNote") : title)
         let state = RecordingAttributes.ContentState(startDate: startDate, isPaused: false, accumulatedSeconds: 0)
         let content = ActivityContent(state: state, staleDate: nil)
 

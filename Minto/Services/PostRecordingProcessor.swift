@@ -31,7 +31,7 @@ final class PostRecordingProcessor {
         }
 
         // Step 1: Batch transcription with speaker diarization
-        statusMessage = "Analyzing speakers..."
+        statusMessage = L("status.analyzingSpeakers")
         var fullText = meeting.rawTranscript
         var segments: [SegmentData] = []
 
@@ -52,7 +52,7 @@ final class PostRecordingProcessor {
         }
 
         // Step 2: LLM transcript correction (via proxy — always available)
-        statusMessage = "Polishing transcript..."
+        statusMessage = L("status.polishingTranscript")
         do {
             fullText = try await ClaudeService.shared.correctTranscript(
                 rawTranscript: fullText,

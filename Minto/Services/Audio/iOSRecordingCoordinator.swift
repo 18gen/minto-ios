@@ -80,7 +80,7 @@ final class iOSRecordingCoordinator {
 
         // Wait for API keys if not yet fetched
         if !AppSettings.keysFetched {
-            recordingError = "Connecting to server..."
+            recordingError = L("status.connectingToServer")
             await AppSettings.awaitKeysReady(timeout: 10)
             recordingError = nil
         }
@@ -106,7 +106,7 @@ final class iOSRecordingCoordinator {
 
         // Validate we have at least one API key
         if effectiveMode == .onDevice, AppSettings.whisperKey.isEmpty {
-            recordingError = "Unable to connect. Check your internet connection and try again."
+            recordingError = L("error.unableToConnect")
             meeting.status = "idle"
             return
         }
@@ -123,7 +123,7 @@ final class iOSRecordingCoordinator {
         }
 
         guard granted else {
-            recordingError = "Microphone permission denied. Go to Settings > Privacy > Microphone."
+            recordingError = L("error.micPermissionDenied")
             meeting.status = "idle"
             return
         }
@@ -168,11 +168,11 @@ final class iOSRecordingCoordinator {
                 try? await Task.sleep(for: .seconds(5))
                 guard let self, self.isRecording else { return }
                 if !self.audioCaptureService.hasReceivedNonSilence {
-                    self.recordingError = "Listening for audio..."
+                    self.recordingError = L("status.listeningForAudio")
                 }
             }
         } catch {
-            recordingError = "Failed to start: \(error.localizedDescription)"
+            recordingError = L("error.failedToStart", error.localizedDescription)
             meeting.status = "idle"
             elevenLabsService.disconnect()
             deepgramService.disconnect()
@@ -294,7 +294,7 @@ final class iOSRecordingCoordinator {
             case .onDevice: break
             }
         } catch {
-            recordingError = "Reconnect failed: \(error.localizedDescription)"
+            recordingError = L("error.reconnectFailed", error.localizedDescription)
         }
 
         // Drain buffered audio and flush to reconnected stream
@@ -338,7 +338,7 @@ final class iOSRecordingCoordinator {
         elevenLabsService.onError = { [weak self] error in
             guard let self else { return }
             Task { @MainActor [weak self] in
-                self?.recordingError = "ElevenLabs: \(error.localizedDescription)"
+                self?.recordingError = L("error.elevenLabs", error.localizedDescription)
             }
         }
     }
@@ -397,7 +397,7 @@ final class iOSRecordingCoordinator {
 
         for seg in result.segments {
             let isUser = (seg.speaker == userIdx)
-            let label: String? = isUser ? "You" : existingNames[seg.speaker]
+            let label: String? = isUser ? L("speaker.you") : existingNames[seg.speaker]
 
             let segment = TranscriptSegment(
                 text: seg.text,
@@ -442,7 +442,7 @@ final class iOSRecordingCoordinator {
         deepgramService.onError = { [weak self] error in
             guard let self else { return }
             Task { @MainActor [weak self] in
-                self?.recordingError = "Deepgram: \(error.localizedDescription)"
+                self?.recordingError = L("error.deepgram", error.localizedDescription)
             }
         }
     }
@@ -499,7 +499,7 @@ final class iOSRecordingCoordinator {
                 lastSegment.endTime = endTime
             } else {
                 let isUser = (run.speaker == meeting.userSpeakerIndex)
-                let label: String? = isUser ? "You" : meeting.speakerNames[run.speaker]
+                let label: String? = isUser ? L("speaker.you") : meeting.speakerNames[run.speaker]
                 let segment = TranscriptSegment(
                     text: runText,
                     startTime: startTime,
