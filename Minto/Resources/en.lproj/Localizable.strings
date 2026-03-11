@@ -1,0 +1,106 @@
+// Navigation
+"nav.home" = "Minto";
+"nav.settings" = "Settings";
+"nav.transcript" = "Transcript";
+"nav.aiAssistant" = "AI Assistant";
+
+// Buttons
+"button.cancel" = "Cancel";
+"button.done" = "Done";
+"button.ok" = "OK";
+"button.delete" = "Delete";
+"button.save" = "Save";
+"button.startRecording" = "Start Recording";
+"button.end" = "End";
+"button.renameSpeaker" = "Rename Speaker";
+"button.markAsMe" = "Mark as Me";
+"button.unmarkAsMe" = "Unmark as Me";
+"button.reEnhance" = "Re-enhance";
+"button.copy" = "Copy";
+"button.share" = "Share";
+
+// Placeholders
+"placeholder.askAnything" = "Ask anything";
+"placeholder.newNote" = "New Note";
+"placeholder.writeNotes" = "Write notes here...";
+"placeholder.search" = "Search";
+"placeholder.name" = "Name";
+
+// Empty States
+"empty.noConversations" = "No conversations yet";
+"empty.noResults" = "No results";
+"empty.transcriptWillAppear" = "Transcript will appear here during recording...";
+
+// Status Messages
+"status.connectingToServer" = "Connecting to server...";
+"status.analyzingSpeakers" = "Analyzing speakers...";
+"status.polishingTranscript" = "Polishing transcript...";
+"status.listeningForAudio" = "Listening for audio...";
+
+// Error Messages
+"error.micPermissionDenied" = "Microphone permission denied. Go to Settings > Privacy > Microphone.";
+"error.unableToConnect" = "Unable to connect. Check your internet connection and try again.";
+"error.failedToStart" = "Failed to start: %@";
+"error.reconnectFailed" = "Reconnect failed: %@";
+"error.elevenLabs" = "ElevenLabs: %@";
+"error.deepgram" = "Deepgram: %@";
+
+// Section Headers
+"section.defaults" = "Defaults";
+"section.dangerZone" = "Danger Zone";
+"section.recipes" = "Recipes";
+
+// Group Labels
+"group.today" = "Today";
+"group.yesterday" = "Yesterday";
+"group.thisWeek" = "This Week";
+"group.older" = "Older";
+
+// Date Labels
+"label.today" = "Today";
+"label.tomorrow" = "Tomorrow";
+
+// Context Labels (for AI chat context)
+"context.userNotes" = "User's notes:";
+"context.transcript" = "Transcript:";
+
+// Settings
+"settings.language" = "Language";
+"settings.defaultTone" = "Default Tone";
+"settings.autoRecord" = "Auto-record when meeting starts";
+"settings.deleteAllData" = "Delete All Data";
+"settings.toneCasual" = "Casual (タメ口)";
+"settings.toneBusiness" = "Business (です/ます)";
+"settings.toneFormal" = "Formal (敬語)";
+
+// Language Display Names
+"language.ja" = "Japanese (日本語)";
+"language.en" = "English";
+
+// Templates
+"template.auto" = "Auto";
+"template.oneOnOne" = "1 to 1";
+"template.customerDiscovery" = "Customer: Discovery";
+"template.hiring" = "Hiring";
+"template.standUp" = "Stand-Up";
+"template.weeklyTeam" = "Weekly Team Meeting";
+"template.soap" = "SOAP";
+
+// Transcript
+"transcript.consentNotice" = "Always get consent when transcribing others.";
+"transcript.available" = "Transcript available";
+"transcript.enterName" = "Enter a name for this speaker";
+
+// Speaker Labels
+"speaker.you" = "You";
+"speaker.unknown" = "Unknown";
+"speaker.numbered" = "Speaker %d";
+
+// Alerts
+"alert.reEnhanceTitle" = "Re-enhance notes?";
+"alert.reEnhanceMessage" = "Your current enhanced notes will be replaced.";
+"alert.renameTitle" = "Rename Speaker";
+
+// Chat
+"chat.newChat" = "New Chat";
+"chat.error" = "Error: %@";

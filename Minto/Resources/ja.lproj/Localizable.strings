@@ -1,0 +1,106 @@
+// Navigation
+"nav.home" = "Minto";
+"nav.settings" = "設定";
+"nav.transcript" = "文字起こし";
+"nav.aiAssistant" = "AIアシスタント";
+
+// Buttons
+"button.cancel" = "キャンセル";
+"button.done" = "完了";
+"button.ok" = "OK";
+"button.delete" = "削除";
+"button.save" = "保存";
+"button.startRecording" = "録音開始";
+"button.end" = "終了";
+"button.renameSpeaker" = "話者の名前を変更";
+"button.markAsMe" = "自分としてマーク";
+"button.unmarkAsMe" = "マークを解除";
+"button.reEnhance" = "再生成";
+"button.copy" = "コピー";
+"button.share" = "共有";
+
+// Placeholders
+"placeholder.askAnything" = "何でも聞いてください";
+"placeholder.newNote" = "新しいノート";
+"placeholder.writeNotes" = "ここにメモを書く...";
+"placeholder.search" = "検索";
+"placeholder.name" = "名前";
+
+// Empty States
+"empty.noConversations" = "会話はまだありません";
+"empty.noResults" = "結果なし";
+"empty.transcriptWillAppear" = "録音中にここに文字起こしが表示されます...";
+
+// Status Messages
+"status.connectingToServer" = "サーバーに接続中...";
+"status.analyzingSpeakers" = "話者を分析中...";
+"status.polishingTranscript" = "文字起こしを修正中...";
+"status.listeningForAudio" = "音声を待っています...";
+
+// Error Messages
+"error.micPermissionDenied" = "マイクの許可が拒否されました。設定 > プライバシー > マイクで許可してください。";
+"error.unableToConnect" = "接続できません。インターネット接続を確認してもう一度お試しください。";
+"error.failedToStart" = "開始に失敗しました: %@";
+"error.reconnectFailed" = "再接続に失敗しました: %@";
+"error.elevenLabs" = "ElevenLabs: %@";
+"error.deepgram" = "Deepgram: %@";
+
+// Section Headers
+"section.defaults" = "デフォルト";
+"section.dangerZone" = "データ管理";
+"section.recipes" = "レシピ";
+
+// Group Labels
+"group.today" = "今日";
+"group.yesterday" = "昨日";
+"group.thisWeek" = "今週";
+"group.older" = "それ以前";
+
+// Date Labels
+"label.today" = "今日";
+"label.tomorrow" = "明日";
+
+// Context Labels (for AI chat context)
+"context.userNotes" = "ユーザーのメモ:";
+"context.transcript" = "文字起こし:";
+
+// Settings
+"settings.language" = "言語";
+"settings.defaultTone" = "デフォルトのトーン";
+"settings.autoRecord" = "ミーティング開始時に自動録音";
+"settings.deleteAllData" = "すべてのデータを削除";
+"settings.toneCasual" = "カジュアル (タメ口)";
+"settings.toneBusiness" = "ビジネス (です/ます)";
+"settings.toneFormal" = "フォーマル (敬語)";
+
+// Language Display Names
+"language.ja" = "Japanese (日本語)";
+"language.en" = "English";
+
+// Templates
+"template.auto" = "自動";
+"template.oneOnOne" = "1対1";
+"template.customerDiscovery" = "顧客ディスカバリー";
+"template.hiring" = "採用面接";
+"template.standUp" = "スタンドアップ";
+"template.weeklyTeam" = "週次チームMTG";
+"template.soap" = "SOAP";
+
+// Transcript
+"transcript.consentNotice" = "文字起こしには必ず同意を得てください。";
+"transcript.available" = "文字起こしあり";
+"transcript.enterName" = "この話者の名前を入力してください";
+
+// Speaker Labels
+"speaker.you" = "あなた";
+"speaker.unknown" = "不明";
+"speaker.numbered" = "話者 %d";
+
+// Alerts
+"alert.reEnhanceTitle" = "ノートを再生成しますか？";
+"alert.reEnhanceMessage" = "現在の生成済みノートが置き換えられます。";
+"alert.renameTitle" = "話者の名前を変更";
+
+// Chat
+"chat.newChat" = "新しいチャット";
+"chat.error" = "エラー: %@";
