@@ -44,8 +44,8 @@ struct PromptsTray: View {
                     .buttonStyle(.plain)
                 }
 
-                ForEach(Array(prompts.prefix(3).enumerated()), id: \.element.id) { index, prompt in
-                    PromptPill(prompt: prompt, colorIndex: index) {
+                ForEach(prompts.prefix(3)) { prompt in
+                    PromptPill(prompt: prompt) {
                         onSelect(prompt)
                     }
                 }
@@ -85,13 +85,13 @@ struct PromptsTray: View {
 
             // Recipe buttons
             VStack(spacing: 2) {
-                ForEach(Array(prompts.enumerated()), id: \.element.id) { index, prompt in
+                ForEach(prompts) { prompt in
                     Button {
                         Haptic.impact(.light)
                         onSelect(prompt)
                     } label: {
                         HStack(spacing: 10) {
-                            SlashBadge(color: AppTheme.promptColors[index % AppTheme.promptColors.count])
+                            SlashBadge(color: prompt.color)
                             Text(prompt.label)
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(.primary)

@@ -34,7 +34,15 @@ enum AppTheme {
     static let textSecondary: Color = .secondary
     static let textTertiary: Color = .primary.opacity(0.45)
 
-    // prompt pill color rotation
-    static let promptColors: [Color] = [primary, .green, .cyan]
+    enum PromptTint: String, Codable, CaseIterable {
+        case mint, green, cyan
 
+        var color: Color {
+            switch self {
+            case .mint:  return AppTheme.primary
+            case .green: return Color(red: 0.204, green: 0.780, blue: 0.349) // #34C759
+            case .cyan:  return Color(red: 0.196, green: 0.678, blue: 0.902) // #32ADE6
+            }
+        }
+    }
 }
