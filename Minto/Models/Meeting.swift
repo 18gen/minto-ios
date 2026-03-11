@@ -65,7 +65,7 @@ final class Meeting {
         if let prev = userSpeakerIndex {
             for segment in segments where segment.speaker == prev {
                 segment.isUserSpeaker = false
-                if segment.speakerLabel == "You" { segment.speakerLabel = nil }
+                segment.speakerLabel = nil
             }
         }
 
@@ -74,7 +74,7 @@ final class Meeting {
         // Set new designation
         for segment in segments where segment.speaker == speakerIndex {
             segment.isUserSpeaker = true
-            segment.speakerLabel = "You"
+            segment.speakerLabel = L("speaker.you")
         }
     }
 

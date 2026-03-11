@@ -10,7 +10,7 @@ final class ChatConversation {
     var messagesData: Data?
 
     init(
-        title: String = "New Chat",
+        title: String = "",
         meetingsContext: String = "",
         createdAt: Date = .now
     ) {
@@ -65,10 +65,10 @@ extension ChatConversation {
         }
 
         var groups: [ConversationGroup] = []
-        if !today.isEmpty { groups.append(.init(label: "Today", conversations: today)) }
-        if !yesterday.isEmpty { groups.append(.init(label: "Yesterday", conversations: yesterday)) }
-        if !thisWeek.isEmpty { groups.append(.init(label: "This Week", conversations: thisWeek)) }
-        if !older.isEmpty { groups.append(.init(label: "Older", conversations: older)) }
+        if !today.isEmpty { groups.append(.init(label: L("group.today"), conversations: today)) }
+        if !yesterday.isEmpty { groups.append(.init(label: L("group.yesterday"), conversations: yesterday)) }
+        if !thisWeek.isEmpty { groups.append(.init(label: L("group.thisWeek"), conversations: thisWeek)) }
+        if !older.isEmpty { groups.append(.init(label: L("group.older"), conversations: older)) }
         return groups
     }
 }
