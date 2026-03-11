@@ -27,8 +27,9 @@ struct NewNoteSheet: View {
                             TextEditor(text: $meeting.augmentedNotes)
                                 .font(.system(size: 17))
                                 .scrollContentBackground(.hidden)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 8)
+                                .frame(minHeight: 150)
+                                .focused($isEditing)
+                                .padding(.horizontal, 12)
                         } else {
                             notesEditor
                                 .padding(.horizontal, 12)
