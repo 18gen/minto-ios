@@ -12,6 +12,8 @@ struct NotepadView: View {
     @State private var chatInitialPrompt: String?
     @State private var chatInitialRecipeLabel: String?
 
+    @State private var enhancer = NoteEnhancer()
+
     var body: some View {
         ZStack(alignment: .bottom) {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
@@ -37,6 +39,11 @@ struct NotepadView: View {
                 initialRecipeLabel: chatInitialRecipeLabel
             )
             .id(conv.persistentModelID)
+        }
+        .onAppear {
+            if !meeting.augmentedNotes.isEmpty {
+                enhancer.showingEnhanced = true
+            }
         }
     }
 
@@ -67,12 +74,25 @@ private extension NotepadView {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-            TextEditor(text: $meeting.userNotes)
-                .focused($notesFocused)
-                .font(.system(size: 17))
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 8)
+            if let error = enhancer.augmentError {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 16)
+            }
+
+            if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
+                ScrollView {
+                    EnhancedNotesView(text: meeting.augmentedNotes)
+                }
+            } else {
+                TextEditor(text: $meeting.userNotes)
+                    .focused($notesFocused)
+                    .font(.system(size: 17))
+                    .scrollContentBackground(.hidden)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 8)
+            }
         }
         .padding(.bottom, 54)
     }
@@ -89,6 +109,14 @@ private extension NotepadView {
                     .metadataButtonStyle()
 
                 Spacer()
+
+                NoteToggle(
+                    showingEnhanced: $enhancer.showingEnhanced,
+                    isLoading: enhancer.isAugmenting,
+                    hasTranscript: !meeting.rawTranscript.isEmpty,
+                    onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
+                    onSelectTemplate: { enhancer.enhance(meeting: meeting, template: $0) }
+                )
             }
         }
     }

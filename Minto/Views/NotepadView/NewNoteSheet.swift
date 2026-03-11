@@ -12,6 +12,7 @@ struct NewNoteSheet: View {
     @State private var selectedDetent: PresentationDetent = .fraction(0.7)
     @State private var currentPage: NotePage = .notes
     @FocusState private var isEditing: Bool
+    @State private var enhancer = NoteEnhancer()
 
     enum RecordingPhase { case idle, recording, paused }
 
@@ -22,14 +23,35 @@ struct NewNoteSheet: View {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        TextField("New Note", text: $meeting.title)
-                            .textFieldStyle(.automatic)
-                            .font(.system(.title, design: .serif))
-                            .padding(.horizontal, 16)
-                            .focused($isEditing)
+                        HStack {
+                            TextField("New Note", text: $meeting.title)
+                                .textFieldStyle(.automatic)
+                                .font(.system(.title, design: .serif))
+                                .focused($isEditing)
 
-                        notesEditor
-                            .padding(.horizontal, 12)
+                            NoteToggle(
+                                showingEnhanced: $enhancer.showingEnhanced,
+                                isLoading: enhancer.isAugmenting,
+                                hasTranscript: !meeting.rawTranscript.isEmpty,
+                                onTapEnhance: { enhancer.tapEnhance(meeting: meeting) },
+                                onSelectTemplate: { enhancer.enhance(meeting: meeting, template: $0) }
+                            )
+                        }
+                        .padding(.horizontal, 16)
+
+                        if let error = enhancer.augmentError {
+                            Text(error)
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                                .padding(.horizontal, 16)
+                        }
+
+                        if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
+                            EnhancedNotesView(text: meeting.augmentedNotes)
+                        } else {
+                            notesEditor
+                                .padding(.horizontal, 12)
+                        }
                     }
                     .padding(.top, 8)
                 }
