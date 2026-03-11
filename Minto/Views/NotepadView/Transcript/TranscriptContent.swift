@@ -19,13 +19,13 @@ struct TranscriptContent: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 8) {
-                    Text("Always get consent when transcribing others.")
+                    Text(L("transcript.consentNotice"))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .padding(.top, 16)
 
                     if meeting.segments.isEmpty && meeting.rawTranscript.isEmpty && coordinator.currentPartial.isEmpty {
-                        Text("Transcript will appear here during recording...")
+                        Text(L("empty.transcriptWillAppear"))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .padding(.top, 30)
@@ -122,7 +122,7 @@ struct TranscriptContent: View {
                     editingSpeakerName = meeting.speakerNames[speaker] ?? ""
                     editingSpeaker = speaker
                 } label: {
-                    Label("Rename Speaker", systemImage: "pencil")
+                    Label(L("button.renameSpeaker"), systemImage: "pencil")
                 }
 
                 if !isUser {
@@ -130,18 +130,18 @@ struct TranscriptContent: View {
                         meeting.markSpeakerAsUser(speaker)
                         Haptic.notification(.success)
                     } label: {
-                        Label("Mark as Me", systemImage: "person.crop.circle.badge.checkmark")
+                        Label(L("button.markAsMe"), systemImage: "person.crop.circle.badge.checkmark")
                     }
                 } else {
                     Button(role: .destructive) {
                         meeting.userSpeakerIndex = nil
                         for seg in meeting.segments where seg.speaker == speaker {
+                            seg.speakerLabel = nil
                             seg.isUserSpeaker = false
-                            if seg.speakerLabel == "You" { seg.speakerLabel = nil }
                         }
                         Haptic.notification(.success)
                     } label: {
-                        Label("Unmark as Me", systemImage: "person.crop.circle.badge.minus")
+                        Label(L("button.unmarkAsMe"), systemImage: "person.crop.circle.badge.minus")
                     }
                 }
             }
@@ -158,12 +158,13 @@ struct TranscriptContent: View {
     }
 
     private func displayName(for segment: TranscriptSegment) -> String {
+        if segment.isUserSpeaker == true { return L("speaker.you") }
         if let label = segment.speakerLabel, !label.isEmpty { return label }
         if let speaker = segment.speaker, let name = meeting.speakerNames[speaker], !name.isEmpty {
             return name
         }
-        if let speaker = segment.speaker { return "Speaker \(speaker + 1)" }
-        return "Unknown"
+        if let speaker = segment.speaker { return L("speaker.numbered", speaker + 1) }
+        return L("speaker.unknown")
     }
 
     private func colorForSegment(_ segment: TranscriptSegment) -> Color {
@@ -181,20 +182,20 @@ private struct RenameAlertModifier: ViewModifier {
     let meeting: Meeting
 
     func body(content: Content) -> some View {
-        content.alert("Rename Speaker", isPresented: .init(
+        content.alert(L("alert.renameTitle"), isPresented: .init(
             get: { editingSpeaker != nil },
             set: { if !$0 { editingSpeaker = nil } }
         )) {
-            TextField("Name", text: $editingSpeakerName)
-            Button("OK") {
+            TextField(L("placeholder.name"), text: $editingSpeakerName)
+            Button(L("button.ok")) {
                 if let speaker = editingSpeaker {
                     meeting.renameSpeaker(speaker, to: editingSpeakerName)
                 }
                 editingSpeaker = nil
             }
-            Button("Cancel", role: .cancel) { editingSpeaker = nil }
+            Button(L("button.cancel"), role: .cancel) { editingSpeaker = nil }
         } message: {
-            Text("Enter a name for this speaker")
+            Text(L("transcript.enterName"))
         }
     }
 }

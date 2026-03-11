@@ -6,7 +6,7 @@ struct TranscriptPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Transcript")
+                Text(L("nav.transcript"))
                     .font(.headline)
                 Spacer()
                 Button {

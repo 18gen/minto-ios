@@ -7,7 +7,7 @@ struct TranscriptSheetView: View {
     var body: some View {
         NavigationStack {
             TranscriptContent(meeting: meeting)
-                .navigationTitle("Transcript")
+                .navigationTitle(L("nav.transcript"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
@@ -19,7 +19,7 @@ struct TranscriptSheetView: View {
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") { dismiss() }
+                        Button(L("button.done")) { dismiss() }
                     }
                 }
         }
