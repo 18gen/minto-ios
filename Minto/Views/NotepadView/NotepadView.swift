@@ -69,36 +69,34 @@ struct NotepadView: View {
 
 private extension NotepadView {
     var content: some View {
-        VStack(spacing: 5) {
-            VStack(spacing: 10) {
-                NoteHeaderView(meeting: meeting, enhancer: enhancer)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 5) {
+                    VStack(spacing: 10) {
+                        NoteHeaderView(meeting: meeting, enhancer: enhancer)
 
-                HStack(spacing: 4) {
-                    Label(dateBadgeText, systemImage: "calendar")
-                        .metadataButtonStyle()
-                    Spacer()
+                        HStack(spacing: 4) {
+                            Label(dateBadgeText, systemImage: "calendar")
+                                .metadataButtonStyle()
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+
+                    if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
+                        AutoHeightTextEditor(text: $meeting.augmentedNotes, minHeight: geo.size.height * 0.5)
+                            .focused($notesFocused)
+                            .padding(.horizontal, 8)
+                    } else {
+                        AutoHeightTextEditor(text: $meeting.userNotes, minHeight: geo.size.height * 0.5)
+                            .focused($notesFocused)
+                            .padding(.horizontal, 8)
+                    }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-
-            if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                TextEditor(text: $meeting.augmentedNotes)
-                    .font(.system(size: 17))
-                    .scrollContentBackground(.hidden)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 8)
-                    .focused($notesFocused)
-            } else {
-                TextEditor(text: $meeting.userNotes)
-                    .focused($notesFocused)
-                    .font(.system(size: 17))
-                    .scrollContentBackground(.hidden)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 8)
+                .padding(.bottom, 54)
             }
         }
-        .padding(.bottom, 54)
     }
 
     @ToolbarContentBuilder
