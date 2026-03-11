@@ -7,7 +7,7 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Meeting.startDate, order: .reverse) private var meetings: [Meeting]
     @State private var navigationPath = NavigationPath()
-    @State private var vm = HomeViewModel()
+    @State private var askText = ""
     @FocusState private var askFocused: Bool
 
     @State private var showNewNoteSheet = false
@@ -22,24 +22,12 @@ struct HomeView: View {
                 currentConversation: nil,
                 onSelect: { conv in
                     showChatDrawer = false
-                    chatPresentation = ChatPresentation(
-                        conversation: conv,
-                        initialPrompt: nil,
-                        initialRecipeLabel: nil,
-                        initialRecipeTint: nil
-                    )
+                    chatPresentation = ChatPresentation(conversation: conv, initialPrompt: nil, initialRecipeLabel: nil, initialRecipeTint: nil)
                 },
                 onNewChat: {
                     showChatDrawer = false
-                    let context = HomeViewModel.recentContext(from: meetings)
-                    let conv = ChatConversation(meetingsContext: context)
-                    modelContext.insert(conv)
-                    chatPresentation = ChatPresentation(
-                        conversation: conv,
-                        initialPrompt: nil,
-                        initialRecipeLabel: nil,
-                        initialRecipeTint: nil
-                    )
+                    let context = ChatFactory.recentContext(from: meetings)
+                    chatPresentation = ChatFactory.makePresentation(in: modelContext, meetingsContext: context)
                 },
                 isSearchExpanded: $isChatSearchExpanded
             )
@@ -63,10 +51,10 @@ struct HomeView: View {
 
                     FloatingBar(
                         prompts: Prompt.home,
-                        askText: $vm.askText,
-                        isAsking: $vm.isAsking,
+                        askText: $askText,
+                        isAsking: .constant(false),
                         askFocus: $askFocused,
-                        onSend: { navigateToChat(prompt: vm.askText) },
+                        onSend: { navigateToChat(prompt: askText) },
                         onPromptSelect: { navigateToChat(prompt: $0.prompt, recipeLabel: $0.label, recipeTint: $0.tint) }
                     ) {
                         Button { createQuickNote() } label: {
@@ -109,7 +97,6 @@ struct HomeView: View {
                 .navigationDestination(for: Meeting.self) { meeting in
                     NotepadView(meeting: meeting)
                 }
-                .task { await vm.onAppear() }
                 .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
                     if let meeting = sheetMeeting {
                         NewNoteSheet(meeting: meeting)
@@ -141,21 +128,20 @@ struct HomeView: View {
         showNewNoteSheet = true
     }
 
-    private func navigateToChat(prompt: String, recipeLabel: String? = nil, recipeTint: AppTheme.PromptTint? = nil) {
+    private func navigateToChat(prompt: String, recipeLabel: String? = nil, recipeTint: Tint? = nil) {
         Haptic.impact(.light)
         let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let context = HomeViewModel.recentContext(from: meetings)
-        vm.askText = ""
+        let context = ChatFactory.recentContext(from: meetings)
+        askText = ""
         askFocused = false
 
-        let conv = ChatConversation(meetingsContext: context)
-        modelContext.insert(conv)
-        chatPresentation = ChatPresentation(
-            conversation: conv,
-            initialPrompt: text,
-            initialRecipeLabel: recipeLabel,
-            initialRecipeTint: recipeTint
+        chatPresentation = ChatFactory.makePresentation(
+            in: modelContext,
+            meetingsContext: context,
+            prompt: text,
+            recipeLabel: recipeLabel,
+            recipeTint: recipeTint
         )
     }
 
