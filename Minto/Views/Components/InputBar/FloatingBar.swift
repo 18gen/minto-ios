@@ -44,7 +44,7 @@ struct FloatingBar<Accessory: View>: View {
                         text: $askText,
                         isAsking: $isAsking,
                         focus: askFocus,
-                        placeholder: "Ask anything",
+                        placeholder: L("placeholder.askAnything"),
                         onSend: onSend
                     )
 

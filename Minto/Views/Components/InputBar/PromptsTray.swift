@@ -60,7 +60,7 @@ struct PromptsTray: View {
         VStack(spacing: 0) {
             // Header with close button
             HStack {
-                Text("Recipes")
+                Text(L("section.recipes"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()

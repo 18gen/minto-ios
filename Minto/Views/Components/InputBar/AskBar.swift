@@ -14,7 +14,7 @@ struct AskBar<Accessory: View>: View {
         text: Binding<String>,
         isAsking: Binding<Bool>,
         focus: FocusState<Bool>.Binding,
-        placeholder: String = "Ask anything",
+        placeholder: String = L("placeholder.askAnything"),
         onSend: @escaping () -> Void,
         @ViewBuilder accessory: () -> Accessory
     ) {
@@ -99,7 +99,7 @@ extension AskBar where Accessory == EmptyView {
         text: Binding<String>,
         isAsking: Binding<Bool>,
         focus: FocusState<Bool>.Binding,
-        placeholder: String = "Ask anything",
+        placeholder: String = L("placeholder.askAnything"),
         onSend: @escaping () -> Void
     ) {
         self._text = text
