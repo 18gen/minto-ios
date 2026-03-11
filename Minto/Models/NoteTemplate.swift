@@ -36,61 +36,130 @@ enum NoteTemplate: String, CaseIterable, Identifiable {
     }
 
     /// Format-specific instructions for the AI enhancement prompt.
-    var formatInstruction: String {
+    func formatInstruction(for language: AppLanguage) -> String {
         switch self {
         case .auto:
             return ""
         case .oneOnOne:
-            return """
-            以下の構造でノートを整理してください：
-            ## 議論ポイント
-            ## フィードバック（受けた/与えた）
-            ## アクションアイテム
-            ## フォローアップ
-            """
+            return switch language {
+            case .ja:
+                """
+                以下の構造でノートを整理してください：
+                ## 議論ポイント
+                ## フィードバック（受けた/与えた）
+                ## アクションアイテム
+                ## フォローアップ
+                """
+            case .en:
+                """
+                Organize notes with this structure:
+                ## Discussion Points
+                ## Feedback (Given/Received)
+                ## Action Items
+                ## Follow-Up
+                """
+            }
         case .customerDiscovery:
-            return """
-            以下の構造でノートを整理してください：
-            ## 顧客のニーズ
-            ## 課題・ペインポイント
-            ## 要件
-            ## 重要な発言（引用）
-            ## ネクストステップ
-            """
+            return switch language {
+            case .ja:
+                """
+                以下の構造でノートを整理してください：
+                ## 顧客のニーズ
+                ## 課題・ペインポイント
+                ## 要件
+                ## 重要な発言（引用）
+                ## ネクストステップ
+                """
+            case .en:
+                """
+                Organize notes with this structure:
+                ## Customer Needs
+                ## Pain Points
+                ## Requirements
+                ## Key Quotes
+                ## Next Steps
+                """
+            }
         case .hiring:
-            return """
-            以下の構造でノートを整理してください：
-            ## 候補者の強み
-            ## 懸念点
-            ## カルチャーフィット
-            ## 技術評価
-            ## 総合評価・推薦
-            """
+            return switch language {
+            case .ja:
+                """
+                以下の構造でノートを整理してください：
+                ## 候補者の強み
+                ## 懸念点
+                ## カルチャーフィット
+                ## 技術評価
+                ## 総合評価・推薦
+                """
+            case .en:
+                """
+                Organize notes with this structure:
+                ## Candidate Strengths
+                ## Concerns
+                ## Culture Fit
+                ## Technical Assessment
+                ## Overall Recommendation
+                """
+            }
         case .standUp:
-            return """
-            以下の構造でノートを整理してください：
-            ## 完了したこと
-            ## 今日やること
-            ## ブロッカー
-            ## メモ
-            """
+            return switch language {
+            case .ja:
+                """
+                以下の構造でノートを整理してください：
+                ## 完了したこと
+                ## 今日やること
+                ## ブロッカー
+                ## メモ
+                """
+            case .en:
+                """
+                Organize notes with this structure:
+                ## Done
+                ## Doing Today
+                ## Blockers
+                ## Notes
+                """
+            }
         case .weeklyTeam:
-            return """
-            以下の構造でノートを整理してください：
-            ## 参加者
-            ## 各メンバーのアップデート
-            ## 決定事項
-            ## アクションアイテム
-            ## 次回のアジェンダ
-            """
+            return switch language {
+            case .ja:
+                """
+                以下の構造でノートを整理してください：
+                ## 参加者
+                ## 各メンバーのアップデート
+                ## 決定事項
+                ## アクションアイテム
+                ## 次回のアジェンダ
+                """
+            case .en:
+                """
+                Organize notes with this structure:
+                ## Attendees
+                ## Member Updates
+                ## Decisions
+                ## Action Items
+                ## Next Meeting Agenda
+                """
+            }
         case .soap:
-            return """
-            SOAP形式でノートを整理してください：
-            S:
-            O:
-            A:
-            P:
-            """
+            return switch language {
+            case .ja:
+                """
+                SOAP形式でノートを整理してください：
+                S:
+                O:
+                A:
+                P:
+                """
+            case .en:
+                """
+                Organize notes in SOAP format:
+                S:
+                O:
+                A:
+                P:
+                """
+            }
         }
     }
 }
