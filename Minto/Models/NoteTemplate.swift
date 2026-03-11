@@ -13,13 +13,13 @@ enum NoteTemplate: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .auto: "Auto"
-        case .oneOnOne: "1 to 1"
-        case .customerDiscovery: "Customer: Discovery"
-        case .hiring: "Hiring"
-        case .standUp: "Stand-Up"
-        case .weeklyTeam: "Weekly Team Meeting"
-        case .soap: "SOAP"
+        case .auto: L("template.auto")
+        case .oneOnOne: L("template.oneOnOne")
+        case .customerDiscovery: L("template.customerDiscovery")
+        case .hiring: L("template.hiring")
+        case .standUp: L("template.standUp")
+        case .weeklyTeam: L("template.weeklyTeam")
+        case .soap: L("template.soap")
         }
     }
 

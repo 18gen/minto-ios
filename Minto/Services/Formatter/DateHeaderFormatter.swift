@@ -1,12 +1,10 @@
 import Foundation
 
 enum DateHeaderFormatter {
-    static let header: DateFormatter = {
+    static func string(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale.current
+        f.locale = Locale(identifier: AppSettings.shared.language.rawValue)
         f.setLocalizedDateFormatFromTemplate("EEE, MMM d")
-        return f
-    }()
-
-    static func string(_ date: Date) -> String { header.string(from: date) }
+        return f.string(from: date)
+    }
 }

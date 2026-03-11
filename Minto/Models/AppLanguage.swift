@@ -8,8 +8,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .ja: "Japanese (日本語)"
-        case .en: "English"
+        case .ja: L("language.ja")
+        case .en: L("language.en")
         }
     }
 }
