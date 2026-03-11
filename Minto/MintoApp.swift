@@ -23,6 +23,7 @@ struct MintoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task { await AppSettings.fetchKeys() }
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, newPhase in

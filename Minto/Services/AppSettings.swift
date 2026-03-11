@@ -22,13 +22,48 @@ final class AppSettings {
 
     // MARK: - API Keys
 
-    // WebSocket services (Deepgram, ElevenLabs Realtime) still need client-side keys
-    // since Cloudflare Workers free tier doesn't support WebSocket proxying.
-    // REST services now use the proxy — these env vars are only for local development.
+    // Keys are fetched from the server proxy on launch.
+    // Environment variables are used as fallback for local Xcode development.
+    private static let keyLock = NSLock()
+    private static var _elevenLabsKey: String = ""
+    private static var _deepgramKey: String = ""
+    private(set) static var keysFetched = false
+
     nonisolated static var whisperKey: String { ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "" }
     nonisolated static var claudeKey: String { ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? "" }
-    nonisolated static var deepgramKey: String { ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? "" }
-    nonisolated static var elevenLabsKey: String { ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"] ?? "" }
+
+    nonisolated static var deepgramKey: String {
+        keyLock.lock()
+        let key = _deepgramKey
+        keyLock.unlock()
+        if !key.isEmpty { return key }
+        return ProcessInfo.processInfo.environment["DEEPGRAM_API_KEY"] ?? ""
+    }
+
+    nonisolated static var elevenLabsKey: String {
+        keyLock.lock()
+        let key = _elevenLabsKey
+        keyLock.unlock()
+        if !key.isEmpty { return key }
+        return ProcessInfo.processInfo.environment["ELEVENLABS_API_KEY"] ?? ""
+    }
+
+    /// Fetch WebSocket API keys from the server proxy. Called on app launch.
+    nonisolated static func fetchKeys() async {
+        guard let url = URL(string: "\(apiProxyBase)/v1/keys") else { return }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: String] else { return }
+            keyLock.lock()
+            if let key = json["elevenlabs"], !key.isEmpty { _elevenLabsKey = key }
+            if let key = json["deepgram"], !key.isEmpty { _deepgramKey = key }
+            keyLock.unlock()
+            keysFetched = true
+        } catch {
+            // Silently fail — env var fallback will be used
+        }
+    }
 
     private init() {
         self.defaultToneMode = defaults.string(forKey: "defaultToneMode") ?? "business"
