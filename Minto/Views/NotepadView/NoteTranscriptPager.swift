@@ -9,7 +9,7 @@ enum NotePage: Int, CaseIterable {
 struct NoteTranscriptPager<NotesContent: View>: View {
     @Binding var currentPage: NotePage
     @Bindable var meeting: Meeting
-    var notesFocus: FocusState<Bool>.Binding
+    var onClearFocus: (() -> Void)?
     @ViewBuilder var notesContent: () -> NotesContent
 
     private let coordinator = iOSRecordingCoordinator.shared
@@ -23,6 +23,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
             TabView(selection: $currentPage) {
                 notesContent()
                     .tag(NotePage.notes)
+                    .background(ScrollViewDelayFix())
 
                 TranscriptPanelView(meeting: meeting)
                     .tag(NotePage.transcript)
@@ -30,7 +31,7 @@ struct NoteTranscriptPager<NotesContent: View>: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .onChange(of: currentPage) { _, newPage in
                 if newPage == .transcript {
-                    notesFocus.wrappedValue = false
+                    onClearFocus?()
                 }
             }
 

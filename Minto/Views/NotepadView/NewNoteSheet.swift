@@ -16,7 +16,9 @@ struct NewNoteSheet: View {
         VStack(spacing: 0) {
             sheetToolbar
 
-            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, notesFocus: $isEditing) {
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, onClearFocus: {
+                isEditing = false
+            }) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         NoteHeaderView(meeting: meeting, enhancer: enhancer)

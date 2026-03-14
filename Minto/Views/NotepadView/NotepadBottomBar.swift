@@ -4,89 +4,93 @@ struct NotepadBottomBar: View {
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
     var isNotepadEditing: Bool = false
+    var blockEditorVM: BlockEditorViewModel?
+    @Binding var askText: String
+    @Binding var isAsking: Bool
+    var askFocus: FocusState<Bool>.Binding
     var onDismissKeyboard: (() -> Void)?
     var onOpenChat: ((_ text: String, _ recipeLabel: String?, _ recipeTint: Tint?) -> Void)?
 
-    private let coordinator = iOSRecordingCoordinator.shared
-    @State private var askText = ""
-    @State private var isAsking = false
-    @FocusState private var askFocused: Bool
-
     var body: some View {
         VStack(spacing: 0) {
-            recordingStatus
+            RecordingStatus()
 
-            FloatingBar(
-                prompts: Prompt.notepad(for: AppSettings.shared.language),
-                askText: $askText,
-                isAsking: $isAsking,
-                askFocus: $askFocused,
-                onSend: {
-                    let text = askText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !text.isEmpty else { return }
-                    askText = ""
-                    askFocused = false
-                    onOpenChat?(text, nil, nil)
-                },
-                onPromptSelect: { p in
-                    askFocused = false
-                    onOpenChat?(p.prompt, p.label, p.tint)
-                }
-            ) {
-                if isNotepadEditing, let onDismissKeyboard {
-                    CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
-                        onDismissKeyboard()
-                    }
-                    .transition(.scale.combined(with: .opacity))
-                } else {
-                    recordingCapsule
-                }
+            if currentPage == .notes, let vm = blockEditorVM, vm.focusedBlockID != nil {
+                blockToolbar
+            } else {
+                floatingBar
+            }
+        }
+        .onChange(of: currentPage) { _, newPage in
+            if newPage != .notes {
+                blockEditorVM?.hidePicker()
             }
         }
     }
 
-    // MARK: - Recording Status
+    // MARK: - Block Toolbar (editing mode — block focused)
 
-    @ViewBuilder
-    private var recordingStatus: some View {
-        VStack(spacing: 6) {
-            if let error = coordinator.recordingError {
-                Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-            }
-
-            if coordinator.isProcessingBatch {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text(coordinator.batchProcessingStatus)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
+    private var blockToolbar: some View {
+        BlockToolbar(
+            mode: toolbarModeBinding,
+            isPickerActive: blockEditorVM?.isPickerVisible ?? false,
+            onTogglePicker: {
+                blockEditorVM?.toggleBlockPicker()
+            },
+            onDismissEditing: {
+                askFocus.wrappedValue = true
+                blockEditorVM?.clearFocus(resign: false)
+            },
+            activeTextView: blockEditorVM?.activeTextView,
+            accessory: AnyView(keyboardDismissButton),
+            isBoldActive: blockEditorVM?.isBoldActive ?? false,
+            isItalicActive: blockEditorVM?.isItalicActive ?? false,
+            isUnderlineActive: blockEditorVM?.isUnderlineActive ?? false,
+            onFormatChange: { blockEditorVM?.updateFormattingState() }
+        )
     }
 
-    // MARK: - Recording Capsule
+    private var toolbarModeBinding: Binding<BlockToolbarMode> {
+        Binding(
+            get: { blockEditorVM?.toolbarMode ?? .main },
+            set: { blockEditorVM?.toolbarMode = $0 }
+        )
+    }
 
-    private var recordingCapsule: some View {
-        CapsuleButton(
-            icon: coordinator.isRecording ? "pause.fill" : "play.fill",
-            style: coordinator.isRecording ? .cream : .darkOutline,
-            size: .compact,
-            isLoading: coordinator.isProcessingBatch
+    private var keyboardDismissButton: some View {
+        CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
+            onDismissKeyboard?()
+        }
+    }
+
+    // MARK: - Floating Bar (idle / transcript)
+
+    private var floatingBar: some View {
+        FloatingBar(
+            prompts: Prompt.notepad(for: AppSettings.shared.language),
+            askText: $askText,
+            isAsking: $isAsking,
+            askFocus: askFocus,
+            onSend: {
+                let text = askText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { return }
+                askText = ""
+                askFocus.wrappedValue = false
+                onOpenChat?(text, nil, nil)
+            },
+            onPromptSelect: { p in
+                askFocus.wrappedValue = false
+                onOpenChat?(p.prompt, p.label, p.tint)
+            }
         ) {
-            Task {
-                if coordinator.isRecording {
-                    await coordinator.stopRecording()
-                } else {
-                    await coordinator.startRecording(meeting: meeting)
+            if isNotepadEditing, let onDismissKeyboard {
+                CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
+                    onDismissKeyboard()
                 }
+                .transition(.scale.combined(with: .opacity))
+            } else {
+                RecordingCapsule(meeting: meeting)
             }
         }
-        .disabled(coordinator.isProcessingBatch)
     }
 }

@@ -7,27 +7,61 @@ struct NotepadView: View {
 
     @State private var currentPage: NotePage = .notes
     @FocusState private var notesFocused: Bool
+    @FocusState private var askFocused: Bool
+    @State private var askText = ""
+    @State private var isAsking = false
 
     @State private var chatPresentation: ChatPresentation?
 
     @State private var enhancer = NoteEnhancer()
+    @State private var blockEditorVM: BlockEditorViewModel?
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, notesFocus: $notesFocused) {
+            NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, onClearFocus: {
+                notesFocused = false
+                askFocused = false
+                blockEditorVM?.clearFocus()
+            }) {
                 content
             }
             NotepadBottomBar(
                 meeting: meeting,
                 currentPage: $currentPage,
                 isNotepadEditing: notesFocused,
-                onDismissKeyboard: { notesFocused = false },
+                blockEditorVM: blockEditorVM,
+                askText: $askText,
+                isAsking: $isAsking,
+                askFocus: $askFocused,
+                onDismissKeyboard: {
+                    notesFocused = false
+                    askFocused = false
+                    blockEditorVM?.clearFocus()
+                },
                 onOpenChat: { text, recipeLabel, recipeTint in
                     openChat(prompt: text, recipeLabel: recipeLabel, recipeTint: recipeTint)
                 }
             )
         }
         .background(AppTheme.background.ignoresSafeArea())
+        .onChange(of: notesFocused) { _, focused in
+            if focused {
+                askFocused = false
+                blockEditorVM?.clearFocus(resign: false)
+            }
+        }
+        .onChange(of: askFocused) { _, focused in
+            if focused {
+                notesFocused = false
+                blockEditorVM?.clearFocus(resign: false)
+            }
+        }
+        .onChange(of: blockEditorVM?.focusedBlockID) { _, newID in
+            if newID != nil {
+                notesFocused = false
+                askFocused = false
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
         .fullScreenCover(item: $chatPresentation) { presentation in
@@ -41,6 +75,9 @@ struct NotepadView: View {
         .onAppear {
             if !meeting.augmentedNotes.isEmpty {
                 enhancer.showingEnhanced = true
+            }
+            if blockEditorVM == nil {
+                blockEditorVM = BlockEditorViewModel(meeting: meeting)
             }
         }
     }
@@ -88,14 +125,13 @@ private extension NotepadView {
                         AutoHeightTextEditor(text: $meeting.augmentedNotes, minHeight: geo.size.height * 0.5)
                             .focused($notesFocused)
                             .padding(.horizontal, 8)
-                    } else {
-                        AutoHeightTextEditor(text: $meeting.userNotes, minHeight: geo.size.height * 0.5)
-                            .focused($notesFocused)
-                            .padding(.horizontal, 8)
+                    } else if let vm = blockEditorVM {
+                        BlockEditorView(viewModel: vm)
                     }
                 }
                 .padding(.bottom, 54)
             }
+            .scrollDismissesKeyboard(.never)
         }
     }
 
