@@ -48,7 +48,7 @@ struct FloatingBar<Accessory: View>: View {
                         onSend: onSend
                     )
 
-                    if !askFocus.wrappedValue {
+                    if askText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         accessory()
                             .transition(.scale.combined(with: .opacity))
                     }
@@ -60,6 +60,7 @@ struct FloatingBar<Accessory: View>: View {
         }
         .ignoresSafeArea(.keyboard)
         .animation(AppTheme.Anim.springSnappy, value: askFocus.wrappedValue)
+        .animation(AppTheme.Anim.springSnappy, value: askText)
         .animation(AppTheme.Anim.spring, value: showRecipes)
         .onChange(of: askText) {
             if askText == "/" {
