@@ -73,7 +73,19 @@ final class iOSAudioCaptureService: @unchecked Sendable {
             .overrideMutedMicrophoneInterruption,
         ])
 
-        try session.setActive(true)
+        // Session activation can fail when another app (e.g. VoIP call) owns the audio session.
+        // Retry once after a brief pause, then attempt engine start regardless.
+        do {
+            try session.setActive(true)
+        } catch {
+            Self.log.warning("setActive failed, retrying: \(error.localizedDescription)")
+            try? await Task.sleep(for: .milliseconds(300))
+            do {
+                try session.setActive(true)
+            } catch {
+                Self.log.warning("setActive retry failed, attempting engine start anyway: \(error.localizedDescription)")
+            }
+        }
 
         let engine = AVAudioEngine()
         let inputFormat = installTap(on: engine)
