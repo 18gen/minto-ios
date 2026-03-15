@@ -10,7 +10,7 @@ final class Meeting {
     var userNotes: String
     var rawTranscript: String
     var augmentedNotes: String
-    var blocksJSON: String
+    var blocksJSON: String = ""
 
     var status: String
 
