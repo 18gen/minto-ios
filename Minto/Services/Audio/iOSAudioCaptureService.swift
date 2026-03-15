@@ -70,7 +70,9 @@ final class iOSAudioCaptureService: @unchecked Sendable {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .default, options: [
             .mixWithOthers, .defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP,
+            .overrideMutedMicrophoneInterruption,
         ])
+
         try session.setActive(true)
 
         let engine = AVAudioEngine()
