@@ -1,6 +1,11 @@
 import UIKit
 import Observation
 
+enum EditorMode {
+    case userNotes
+    case augmentedNotes
+}
+
 @Observable @MainActor
 final class BlockEditorViewModel {
     var blocks: [Block]
@@ -15,29 +20,47 @@ final class BlockEditorViewModel {
     var shouldScrollToFocus = false
     private var pendingBlockRemoval: UUID?
 
+    let mode: EditorMode
     private weak var meeting: Meeting?
     private var saveTask: Task<Void, Never>?
     private(set) var keyboardHeight: CGFloat = 300
+    nonisolated(unsafe) private var keyboardObserver: Any?
 
-    init(meeting: Meeting) {
+    init(meeting: Meeting, mode: EditorMode = .userNotes) {
         self.meeting = meeting
-        if meeting.blocks.isEmpty && !meeting.userNotes.isEmpty {
-            self.blocks = [Block(type: .text, text: meeting.userNotes)]
-        } else if meeting.blocks.isEmpty {
-            self.blocks = [Block(type: .text)]
-        } else {
-            self.blocks = meeting.blocks
-        }
-        startObservingKeyboard()
-    }
+        self.mode = mode
 
-    private func startObservingKeyboard() {
-        NotificationCenter.default.addObserver(
+        switch mode {
+        case .userNotes:
+            if meeting.blocks.isEmpty && !meeting.userNotes.isEmpty {
+                self.blocks = [Block(type: .text, text: meeting.userNotes)]
+            } else if meeting.blocks.isEmpty {
+                self.blocks = [Block(type: .text)]
+            } else {
+                self.blocks = meeting.blocks
+            }
+        case .augmentedNotes:
+            if !meeting.augmentedBlocks.isEmpty {
+                self.blocks = meeting.augmentedBlocks
+            } else if !meeting.augmentedNotes.isEmpty {
+                self.blocks = Block.parseFromText(meeting.augmentedNotes)
+            } else {
+                self.blocks = [Block(type: .text)]
+            }
+        }
+
+        keyboardObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification,
             object: nil, queue: .main
         ) { [weak self] notification in
             guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
             self?.keyboardHeight = frame.height
+        }
+    }
+
+    deinit {
+        if let observer = keyboardObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 
@@ -123,8 +146,15 @@ final class BlockEditorViewModel {
     }
 
     func save() {
-        meeting?.blocks = blocks
-        meeting?.userNotes = blocks.map(\.text).joined(separator: "\n")
+        let plainText = blocks.map(\.text).joined(separator: "\n")
+        switch mode {
+        case .userNotes:
+            meeting?.blocks = blocks
+            meeting?.userNotes = plainText
+        case .augmentedNotes:
+            meeting?.augmentedBlocks = blocks
+            meeting?.augmentedNotes = plainText
+        }
     }
 
     func debouncedSave() {
