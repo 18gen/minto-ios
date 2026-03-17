@@ -3,8 +3,7 @@ import SwiftUI
 struct NotepadBottomBar: View {
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
-    var isNotepadEditing: Bool = false
-    var blockEditorVM: BlockEditorViewModel?
+    var activeBlockEditorVM: BlockEditorViewModel?
     @Binding var askText: String
     @Binding var isAsking: Bool
     var askFocus: FocusState<Bool>.Binding
@@ -15,7 +14,7 @@ struct NotepadBottomBar: View {
         VStack(spacing: 0) {
             RecordingStatus()
 
-            if currentPage == .notes, let vm = blockEditorVM, vm.focusedBlockID != nil {
+            if currentPage == .notes, let vm = activeBlockEditorVM, vm.focusedBlockID != nil {
                 blockToolbar
             } else {
                 floatingBar
@@ -23,7 +22,7 @@ struct NotepadBottomBar: View {
         }
         .onChange(of: currentPage) { _, newPage in
             if newPage != .notes {
-                blockEditorVM?.hidePicker()
+                activeBlockEditorVM?.hidePicker()
             }
         }
     }
@@ -33,27 +32,27 @@ struct NotepadBottomBar: View {
     private var blockToolbar: some View {
         BlockToolbar(
             mode: toolbarModeBinding,
-            isPickerActive: blockEditorVM?.isPickerVisible ?? false,
+            isPickerActive: activeBlockEditorVM?.isPickerVisible ?? false,
             onTogglePicker: {
-                blockEditorVM?.toggleBlockPicker()
+                activeBlockEditorVM?.toggleBlockPicker()
             },
             onDismissEditing: {
                 askFocus.wrappedValue = true
-                blockEditorVM?.clearFocus(resign: false)
+                activeBlockEditorVM?.clearFocus(resign: false)
             },
-            activeTextView: blockEditorVM?.activeTextView,
+            activeTextView: activeBlockEditorVM?.activeTextView,
             accessory: AnyView(keyboardDismissButton),
-            isBoldActive: blockEditorVM?.isBoldActive ?? false,
-            isItalicActive: blockEditorVM?.isItalicActive ?? false,
-            isUnderlineActive: blockEditorVM?.isUnderlineActive ?? false,
-            onFormatChange: { blockEditorVM?.updateFormattingState() }
+            isBoldActive: activeBlockEditorVM?.isBoldActive ?? false,
+            isItalicActive: activeBlockEditorVM?.isItalicActive ?? false,
+            isUnderlineActive: activeBlockEditorVM?.isUnderlineActive ?? false,
+            onFormatChange: { activeBlockEditorVM?.updateFormattingState() }
         )
     }
 
     private var toolbarModeBinding: Binding<BlockToolbarMode> {
         Binding(
-            get: { blockEditorVM?.toolbarMode ?? .main },
-            set: { blockEditorVM?.toolbarMode = $0 }
+            get: { activeBlockEditorVM?.toolbarMode ?? .main },
+            set: { activeBlockEditorVM?.toolbarMode = $0 }
         )
     }
 
@@ -83,14 +82,7 @@ struct NotepadBottomBar: View {
                 onOpenChat?(p.prompt, p.label, p.tint)
             }
         ) {
-            if isNotepadEditing, let onDismissKeyboard {
-                CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
-                    onDismissKeyboard()
-                }
-                .transition(.scale.combined(with: .opacity))
-            } else {
-                RecordingCapsule(meeting: meeting)
-            }
+            RecordingCapsule(meeting: meeting)
         }
     }
 }

@@ -6,7 +6,6 @@ struct NotepadView: View {
     @Bindable var meeting: Meeting
 
     @State private var currentPage: NotePage = .notes
-    @FocusState private var notesFocused: Bool
     @FocusState private var askFocused: Bool
     @State private var askText = ""
     @State private var isAsking = false
@@ -15,28 +14,30 @@ struct NotepadView: View {
 
     @State private var enhancer = NoteEnhancer()
     @State private var blockEditorVM: BlockEditorViewModel?
+    @State private var augmentedEditorVM: BlockEditorViewModel?
+
+    private var activeEditorVM: BlockEditorViewModel? {
+        enhancer.showingEnhanced ? augmentedEditorVM : blockEditorVM
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             NoteTranscriptPager(currentPage: $currentPage, meeting: meeting, onClearFocus: {
-                notesFocused = false
                 askFocused = false
-                blockEditorVM?.clearFocus()
+                activeEditorVM?.clearFocus()
             }) {
                 content
             }
             NotepadBottomBar(
                 meeting: meeting,
                 currentPage: $currentPage,
-                isNotepadEditing: notesFocused,
-                blockEditorVM: blockEditorVM,
+                activeBlockEditorVM: activeEditorVM,
                 askText: $askText,
                 isAsking: $isAsking,
                 askFocus: $askFocused,
                 onDismissKeyboard: {
-                    notesFocused = false
                     askFocused = false
-                    blockEditorVM?.clearFocus()
+                    activeEditorVM?.clearFocus()
                 },
                 onOpenChat: { text, recipeLabel, recipeTint in
                     openChat(prompt: text, recipeLabel: recipeLabel, recipeTint: recipeTint)
@@ -44,23 +45,33 @@ struct NotepadView: View {
             )
         }
         .background(AppTheme.background.ignoresSafeArea())
-        .onChange(of: notesFocused) { _, focused in
-            if focused {
-                askFocused = false
-                blockEditorVM?.clearFocus(resign: false)
-            }
-        }
         .onChange(of: askFocused) { _, focused in
             if focused {
-                notesFocused = false
-                blockEditorVM?.clearFocus(resign: false)
+                activeEditorVM?.clearFocus(resign: false)
             }
         }
-        .onChange(of: blockEditorVM?.focusedBlockID) { _, newID in
+        .onChange(of: activeEditorVM?.focusedBlockID) { _, newID in
             if newID != nil {
-                notesFocused = false
                 askFocused = false
             }
+        }
+        .onChange(of: enhancer.showingEnhanced) { oldVal, newVal in
+            // Clear focus on the outgoing editor when toggling
+            if oldVal != newVal {
+                if oldVal {
+                    augmentedEditorVM?.clearFocus()
+                } else {
+                    blockEditorVM?.clearFocus()
+                }
+            }
+            // Lazily create augmented editor VM
+            if newVal, augmentedEditorVM == nil {
+                augmentedEditorVM = BlockEditorViewModel(meeting: meeting, mode: .augmentedNotes)
+            }
+        }
+        .onChange(of: enhancer.enhancementVersion) { _, _ in
+            // Recreate augmented editor VM with fresh parsed blocks
+            augmentedEditorVM = BlockEditorViewModel(meeting: meeting, mode: .augmentedNotes)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
@@ -77,7 +88,10 @@ struct NotepadView: View {
                 enhancer.showingEnhanced = true
             }
             if blockEditorVM == nil {
-                blockEditorVM = BlockEditorViewModel(meeting: meeting)
+                blockEditorVM = BlockEditorViewModel(meeting: meeting, mode: .userNotes)
+            }
+            if enhancer.showingEnhanced, augmentedEditorVM == nil {
+                augmentedEditorVM = BlockEditorViewModel(meeting: meeting, mode: .augmentedNotes)
             }
         }
     }
@@ -106,7 +120,7 @@ struct NotepadView: View {
 
 private extension NotepadView {
     var content: some View {
-        GeometryReader { geo in
+        GeometryReader { _ in
             ScrollView {
                 VStack(spacing: 5) {
                     VStack(spacing: 10) {
@@ -121,10 +135,8 @@ private extension NotepadView {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
-                    if enhancer.showingEnhanced && !meeting.augmentedNotes.isEmpty {
-                        AutoHeightTextEditor(text: $meeting.augmentedNotes, minHeight: geo.size.height * 0.5)
-                            .focused($notesFocused)
-                            .padding(.horizontal, 8)
+                    if enhancer.showingEnhanced, let vm = augmentedEditorVM {
+                        BlockEditorView(viewModel: vm)
                     } else if let vm = blockEditorVM {
                         BlockEditorView(viewModel: vm)
                     }
