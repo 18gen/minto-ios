@@ -117,6 +117,8 @@ final class BlockEditorViewModel {
             toggleCheck(id: id)
         case let .changeType(id, newType):
             changeType(id: id, to: newType)
+        case let .applyMarkdownShortcut(id, newType, isChecked):
+            applyMarkdownShortcut(id: id, type: newType, isChecked: isChecked)
         }
     }
 
@@ -280,6 +282,15 @@ final class BlockEditorViewModel {
     private func changeType(id: UUID, to newType: BlockType) {
         guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
         blocks[index].type = newType
+        debouncedSave()
+    }
+
+    private func applyMarkdownShortcut(id: UUID, type: BlockType, isChecked: Bool) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
+        blocks[index].type = type
+        blocks[index].text = ""
+        blocks[index].richTextData = nil
+        blocks[index].isChecked = isChecked
         debouncedSave()
     }
 }

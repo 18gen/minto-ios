@@ -35,6 +35,13 @@ enum BlockType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var placeholder: String {
+        switch self {
+        case .text: L("placeholder.typeHere")
+        default: displayName
+        }
+    }
+
     var font: UIFont {
         switch self {
         case .heading1:     .systemFont(ofSize: 28, weight: .bold)

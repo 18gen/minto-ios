@@ -21,7 +21,11 @@ struct BlockRowView: View {
                 onReturn: { pos in onAction(.splitBlock(id: block.id, cursorPosition: pos)) },
                 onDeleteAtStart: {
                     if block.text.isEmpty {
-                        onAction(.deleteBlock(id: block.id))
+                        if block.type != .text {
+                            onAction(.changeType(id: block.id, newType: .text))
+                        } else {
+                            onAction(.deleteBlock(id: block.id))
+                        }
                     } else {
                         onAction(.mergeWithPrevious(id: block.id))
                     }
@@ -32,10 +36,14 @@ struct BlockRowView: View {
                     onAction(.focusBlock(id: block.id, cursorPosition: nil))
                     onFocusGained?(textView)
                 },
-                onSelectionChange: onSelectionChange
+                onSelectionChange: onSelectionChange,
+                onMarkdownShortcut: { newType, isChecked in
+                    onAction(.applyMarkdownShortcut(id: block.id, newType: newType, isChecked: isChecked))
+                }
             )
         }
-        .padding(.horizontal, 16)
+        .padding(.leading, leadingPadding)
+        .padding(.trailing, 16)
         .padding(.top, topPadding)
         .padding(.bottom, 2)
     }
@@ -75,6 +83,13 @@ struct BlockRowView: View {
     }
 
     // MARK: - Padding
+
+    private var leadingPadding: CGFloat {
+        switch block.type {
+        case .bulletedList, .numberedList, .todo: 28
+        default: 16
+        }
+    }
 
     private var topPadding: CGFloat {
         switch block.type {

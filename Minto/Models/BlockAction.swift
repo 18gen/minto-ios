@@ -9,4 +9,5 @@ enum BlockAction {
     case updateAttributedText(id: UUID, attributedText: NSAttributedString)
     case toggleCheck(id: UUID)
     case changeType(id: UUID, newType: BlockType)
+    case applyMarkdownShortcut(id: UUID, newType: BlockType, isChecked: Bool)
 }

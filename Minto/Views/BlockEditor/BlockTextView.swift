@@ -2,6 +2,7 @@ import UIKit
 
 final class BlockTextView: UITextView {
     var onDeleteBackward: (() -> Void)?
+    var placeholderLabel: UILabel?
 
     override func deleteBackward() {
         if selectedRange.location == 0 && selectedRange.length == 0 {

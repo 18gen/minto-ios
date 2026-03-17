@@ -13,6 +13,7 @@ struct BlockUITextView: UIViewRepresentable {
     var onAttributedTextChange: ((NSAttributedString) -> Void)?
     var onFocusGained: ((BlockTextView) -> Void)?
     var onSelectionChange: (() -> Void)?
+    var onMarkdownShortcut: ((BlockType, Bool) -> Void)?
 
     func makeUIView(context: Context) -> BlockTextView {
         let tv = BlockTextView()
@@ -39,6 +40,22 @@ struct BlockUITextView: UIViewRepresentable {
         tv.onDeleteBackward = { [weak coordinator = context.coordinator] in
             coordinator?.onDeleteAtStart?()
         }
+
+        // Placeholder label
+        let placeholder = UILabel()
+        placeholder.text = blockType.placeholder
+        placeholder.font = blockType.font
+        placeholder.textColor = UIColor.white.withAlphaComponent(0.3)
+        placeholder.isUserInteractionEnabled = false
+        placeholder.translatesAutoresizingMaskIntoConstraints = false
+        placeholder.isHidden = true
+        tv.addSubview(placeholder)
+        NSLayoutConstraint.activate([
+            placeholder.topAnchor.constraint(equalTo: tv.topAnchor, constant: tv.textContainerInset.top),
+            placeholder.leadingAnchor.constraint(equalTo: tv.leadingAnchor),
+        ])
+        tv.placeholderLabel = placeholder
+
         return tv
     }
 
@@ -50,6 +67,7 @@ struct BlockUITextView: UIViewRepresentable {
         coordinator.onAttributedTextChange = onAttributedTextChange
         coordinator.onFocusGained = onFocusGained
         coordinator.onSelectionChange = onSelectionChange
+        coordinator.onMarkdownShortcut = onMarkdownShortcut
         coordinator.blockType = blockType
 
         uiView.onDeleteBackward = { [weak coordinator] in
@@ -80,6 +98,11 @@ struct BlockUITextView: UIViewRepresentable {
                 uiView.font = expectedFont
             }
         }
+
+        // Placeholder
+        uiView.placeholderLabel?.text = blockType.placeholder
+        uiView.placeholderLabel?.font = blockType.font
+        uiView.placeholderLabel?.isHidden = !(isFocused && text.isEmpty)
 
         // Focus management
         if isFocused && !uiView.isFirstResponder {
@@ -138,6 +161,7 @@ struct BlockUITextView: UIViewRepresentable {
         var onAttributedTextChange: ((NSAttributedString) -> Void)?
         var onFocusGained: ((BlockTextView) -> Void)?
         var onSelectionChange: (() -> Void)?
+        var onMarkdownShortcut: ((BlockType, Bool) -> Void)?
         var blockType: BlockType = .text
         var isLocalEdit = false
 
@@ -146,19 +170,65 @@ struct BlockUITextView: UIViewRepresentable {
                 onReturn?(range.location)
                 return false
             }
+
+            // Markdown shortcuts: convert block type when space is typed after a prefix
+            if text == " ",
+               blockType == .text,
+               range.length == 0,
+               let currentText = textView.text,
+               range.location == currentText.count,
+               let (newType, isChecked) = Self.detectMarkdownShortcut(currentText)
+            {
+                textView.text = ""
+                onMarkdownShortcut?(newType, isChecked)
+                return false
+            }
+
             return true
+        }
+
+        static func detectMarkdownShortcut(_ text: String) -> (BlockType, Bool)? {
+            switch text {
+            case "-", "*":
+                return (.bulletedList, false)
+            case "[]", "[ ]":
+                return (.todo, false)
+            case "[x]", "[X]":
+                return (.todo, true)
+            case "#":
+                return (.heading1, false)
+            case "##":
+                return (.heading2, false)
+            case "###":
+                return (.heading3, false)
+            default:
+                // Numbered list: any digits followed by "."
+                if text.count >= 2, text.last == ".",
+                   text.dropLast().allSatisfy(\.isWholeNumber)
+                {
+                    return (.numberedList, false)
+                }
+                return nil
+            }
         }
 
         func textViewDidChange(_ textView: UITextView) {
             isLocalEdit = true
-            onTextChange?(textView.text ?? "")
+            let text = textView.text ?? ""
+            (textView as? BlockTextView)?.placeholderLabel?.isHidden = !text.isEmpty
+            onTextChange?(text)
             onAttributedTextChange?(textView.attributedText)
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             if let btv = textView as? BlockTextView {
+                btv.placeholderLabel?.isHidden = !(textView.text ?? "").isEmpty
                 onFocusGained?(btv)
             }
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            (textView as? BlockTextView)?.placeholderLabel?.isHidden = true
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
