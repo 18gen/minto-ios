@@ -98,6 +98,41 @@ struct Block: Identifiable, Codable, Equatable {
         }
     }
 
+    /// Parses markdown-like plain text into an array of blocks.
+    static func parseFromText(_ text: String) -> [Block] {
+        var blocks: [Block] = []
+        for line in text.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+
+            if trimmed.hasPrefix("### ") {
+                blocks.append(Block(type: .heading3, text: String(trimmed.dropFirst(4))))
+            } else if trimmed.hasPrefix("## ") {
+                blocks.append(Block(type: .heading2, text: String(trimmed.dropFirst(3))))
+            } else if trimmed.hasPrefix("# ") {
+                blocks.append(Block(type: .heading1, text: String(trimmed.dropFirst(2))))
+            } else if trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
+                blocks.append(Block(type: .todo, text: String(trimmed.dropFirst(6)), isChecked: true))
+            } else if trimmed.hasPrefix("- [ ] ") {
+                blocks.append(Block(type: .todo, text: String(trimmed.dropFirst(6))))
+            } else if trimmed.hasPrefix("- ") {
+                blocks.append(Block(type: .bulletedList, text: String(trimmed.dropFirst(2))))
+            } else if trimmed.hasPrefix("* ") {
+                blocks.append(Block(type: .bulletedList, text: String(trimmed.dropFirst(2))))
+            } else if let dotIndex = trimmed.firstIndex(of: "."),
+                      trimmed[trimmed.startIndex..<dotIndex].allSatisfy(\.isWholeNumber),
+                      trimmed.index(after: dotIndex) < trimmed.endIndex,
+                      trimmed[trimmed.index(after: dotIndex)] == " "
+            {
+                let content = String(trimmed[trimmed.index(dotIndex, offsetBy: 2)...])
+                blocks.append(Block(type: .numberedList, text: content))
+            } else {
+                blocks.append(Block(type: .text, text: trimmed))
+            }
+        }
+        return blocks.isEmpty ? [Block(type: .text)] : blocks
+    }
+
     private static func hasFormatting(_ attrStr: NSAttributedString, baseFont: UIFont) -> Bool {
         var found = false
         let fullRange = NSRange(location: 0, length: attrStr.length)
