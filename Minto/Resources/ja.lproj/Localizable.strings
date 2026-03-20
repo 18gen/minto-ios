@@ -105,13 +105,3 @@
 "chat.newChat" = "新しいチャット";
 "chat.error" = "エラー: %@";
 
-// Block Editor
-"block.text" = "テキスト";
-"block.heading1" = "見出し1";
-"block.heading2" = "見出し2";
-"block.heading3" = "見出し3";
-"block.bulletedList" = "箇条書き";
-"block.numberedList" = "番号付きリスト";
-"block.todo" = "To-do";
-"blockPicker.title" = "ブロックを追加";
-"placeholder.typeHere" = "入力してください...";

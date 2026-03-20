@@ -10,8 +10,6 @@ final class Meeting {
     var userNotes: String
     var rawTranscript: String
     var augmentedNotes: String
-    var blocksJSON: String = ""
-    var augmentedBlocksJSON: String = ""
 
     var status: String
 
@@ -34,41 +32,10 @@ final class Meeting {
         self.userNotes = ""
         self.rawTranscript = ""
         self.augmentedNotes = ""
-        self.blocksJSON = ""
         self.status = "idle"
         self.speakerNamesData = nil
         self.userSpeakerIndex = nil
         self.segments = []
-    }
-
-    // MARK: - Block Helpers
-
-    var blocks: [Block] {
-        get {
-            guard !blocksJSON.isEmpty,
-                  let data = blocksJSON.data(using: .utf8),
-                  let decoded = try? JSONDecoder().decode([Block].self, from: data)
-            else { return [] }
-            return decoded
-        }
-        set {
-            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
-            blocksJSON = String(data: data, encoding: .utf8) ?? ""
-        }
-    }
-
-    var augmentedBlocks: [Block] {
-        get {
-            guard !augmentedBlocksJSON.isEmpty,
-                  let data = augmentedBlocksJSON.data(using: .utf8),
-                  let decoded = try? JSONDecoder().decode([Block].self, from: data)
-            else { return [] }
-            return decoded
-        }
-        set {
-            let data = (try? JSONEncoder().encode(newValue)) ?? Data()
-            augmentedBlocksJSON = String(data: data, encoding: .utf8) ?? ""
-        }
     }
 
     // MARK: - Speaker Name Helpers

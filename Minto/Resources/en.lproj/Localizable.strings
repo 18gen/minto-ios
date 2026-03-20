@@ -105,13 +105,3 @@
 "chat.newChat" = "New Chat";
 "chat.error" = "Error: %@";
 
-// Block Editor
-"block.text" = "Text";
-"block.heading1" = "Heading 1";
-"block.heading2" = "Heading 2";
-"block.heading3" = "Heading 3";
-"block.bulletedList" = "Bulleted List";
-"block.numberedList" = "Numbered List";
-"block.todo" = "To-do";
-"blockPicker.title" = "Add Block";
-"placeholder.typeHere" = "Type something...";
