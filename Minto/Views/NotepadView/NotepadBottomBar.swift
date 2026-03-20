@@ -3,7 +3,7 @@ import SwiftUI
 struct NotepadBottomBar: View {
     @Bindable var meeting: Meeting
     @Binding var currentPage: NotePage
-    var activeBlockEditorVM: BlockEditorViewModel?
+    var isNotepadEditing: Bool = false
     @Binding var askText: String
     @Binding var isAsking: Bool
     var askFocus: FocusState<Bool>.Binding
@@ -13,56 +13,11 @@ struct NotepadBottomBar: View {
     var body: some View {
         VStack(spacing: 0) {
             RecordingStatus()
-
-            if currentPage == .notes, let vm = activeBlockEditorVM, vm.focusedBlockID != nil {
-                blockToolbar
-            } else {
-                floatingBar
-            }
-        }
-        .onChange(of: currentPage) { _, newPage in
-            if newPage != .notes {
-                activeBlockEditorVM?.hidePicker()
-            }
+            floatingBar
         }
     }
 
-    // MARK: - Block Toolbar (editing mode — block focused)
-
-    private var blockToolbar: some View {
-        BlockToolbar(
-            mode: toolbarModeBinding,
-            isPickerActive: activeBlockEditorVM?.isPickerVisible ?? false,
-            onTogglePicker: {
-                activeBlockEditorVM?.toggleBlockPicker()
-            },
-            onDismissEditing: {
-                askFocus.wrappedValue = true
-                activeBlockEditorVM?.clearFocus(resign: false)
-            },
-            activeTextView: activeBlockEditorVM?.activeTextView,
-            accessory: AnyView(keyboardDismissButton),
-            isBoldActive: activeBlockEditorVM?.isBoldActive ?? false,
-            isItalicActive: activeBlockEditorVM?.isItalicActive ?? false,
-            isUnderlineActive: activeBlockEditorVM?.isUnderlineActive ?? false,
-            onFormatChange: { activeBlockEditorVM?.updateFormattingState() }
-        )
-    }
-
-    private var toolbarModeBinding: Binding<BlockToolbarMode> {
-        Binding(
-            get: { activeBlockEditorVM?.toolbarMode ?? .main },
-            set: { activeBlockEditorVM?.toolbarMode = $0 }
-        )
-    }
-
-    private var keyboardDismissButton: some View {
-        CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
-            onDismissKeyboard?()
-        }
-    }
-
-    // MARK: - Floating Bar (idle / transcript)
+    // MARK: - Floating Bar
 
     private var floatingBar: some View {
         FloatingBar(
@@ -82,7 +37,14 @@ struct NotepadBottomBar: View {
                 onOpenChat?(p.prompt, p.label, p.tint)
             }
         ) {
-            RecordingCapsule(meeting: meeting)
+            if isNotepadEditing, let onDismissKeyboard {
+                CapsuleButton(icon: "keyboard.chevron.compact.down", style: .darkOutline, size: .compact) {
+                    onDismissKeyboard()
+                }
+                .transition(.scale.combined(with: .opacity))
+            } else {
+                RecordingCapsule(meeting: meeting)
+            }
         }
     }
 }
