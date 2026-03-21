@@ -88,9 +88,16 @@ actor ClaudeService {
         return try await sendRequest(systemPrompt: systemPrompt, userMessage: context)
     }
 
-    func enhanceNotes(userNotes: String, transcript: String, template: NoteTemplate = .auto, language: AppLanguage = .ja) async throws -> String {
+    func enhanceNotes(userNotes: String, transcript: String, template: NoteTemplate = .auto, language: AppLanguage = .ja, needsTitle: Bool = false) async throws -> String {
         let hasUserNotes = !userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let systemPrompt = buildEnhanceSystemPrompt(hasUserNotes: hasUserNotes, template: template, language: language)
+        var systemPrompt = buildEnhanceSystemPrompt(hasUserNotes: hasUserNotes, template: template, language: language)
+
+        if needsTitle {
+            let titleInstruction = language == .ja
+                ? "\n最初の行に、この会話の短いタイトルを書いてください（10文字以内）。その後に空行を入れてからノートを書いてください。"
+                : "\nWrite a short title for this conversation on the first line (under 10 words). Then a blank line, then the notes."
+            systemPrompt += titleInstruction
+        }
 
         let notesLabel = language == .ja ? "ユーザーのメモ" : "User Notes"
         let transcriptLabel = language == .ja ? "文字起こし" : "Transcript"

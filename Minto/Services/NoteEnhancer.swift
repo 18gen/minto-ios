@@ -9,6 +9,7 @@ final class NoteEnhancer {
 
     func enhance(meeting: Meeting, template: NoteTemplate) {
         guard !meeting.rawTranscript.isEmpty, !isAugmenting else { return }
+        let needsTitle = meeting.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         isAugmenting = true
         augmentError = nil
         Task {
@@ -17,9 +18,23 @@ final class NoteEnhancer {
                     userNotes: meeting.userNotes,
                     transcript: meeting.rawTranscript,
                     template: template,
-                    language: AppSettings.shared.language
+                    language: AppSettings.shared.language,
+                    needsTitle: needsTitle
                 )
-                meeting.augmentedNotes = result
+
+                if needsTitle, let separatorRange = result.range(of: "\n\n") {
+                    let title = String(result[result.startIndex..<separatorRange.lowerBound])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    let notes = String(result[separatorRange.upperBound...])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !title.isEmpty {
+                        meeting.title = title
+                    }
+                    meeting.augmentedNotes = notes.isEmpty ? result : notes
+                } else {
+                    meeting.augmentedNotes = result
+                }
+
                 showingEnhanced = true
             } catch {
                 augmentError = error.localizedDescription
