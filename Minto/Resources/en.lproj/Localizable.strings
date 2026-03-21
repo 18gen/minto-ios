@@ -30,12 +30,17 @@
 "empty.noConversations" = "No conversations yet";
 "empty.noResults" = "No results";
 "empty.transcriptWillAppear" = "Transcript will appear here during recording...";
+"empty.recordFirst" = "Record a conversation";
+"empty.recordDescription" = "Phone calls, meetings, and voice memos — Minto transcribes and summarizes everything.";
 
 // Status Messages
 "status.connectingToServer" = "Connecting to server...";
 "status.analyzingSpeakers" = "Analyzing speakers...";
 "status.polishingTranscript" = "Polishing transcript...";
 "status.listeningForAudio" = "Listening for audio...";
+"status.recordingSaved" = "Recording saved";
+"status.generatingSummary" = "Generating summary...";
+"status.summaryReady" = "Summary ready";
 
 // Error Messages
 "error.micPermissionDenied" = "Microphone permission denied. Go to Settings > Privacy > Microphone.";
@@ -100,6 +105,11 @@
 // Alerts
 "alert.deleteAllTitle" = "Delete All Data?";
 "alert.deleteAllMessage" = "This will permanently delete all your notes, transcripts, and chat history. This action cannot be undone.";
+
+// Call Detection
+"call.recordPrompt" = "You're on a call — tap to record";
+"call.notificationTitle" = "Minto";
+"call.notificationBody" = "You're on a call. Tap to start recording.";
 
 // Chat
 "chat.newChat" = "New Chat";
