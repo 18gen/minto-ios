@@ -12,9 +12,13 @@ struct HomeView: View {
 
     @State private var showNewNoteSheet = false
     @State private var sheetMeeting: Meeting?
+    @State private var sheetAutoStart = false
     @State private var chatPresentation: ChatPresentation?
     @State private var showChatDrawer = false
     @State private var isChatSearchExpanded = false
+
+    private let callDetection = CallDetectionService.shared
+    private let coordinator = iOSRecordingCoordinator.shared
 
     var body: some View {
         DrawerContainer(isOpen: $showChatDrawer, isExpanded: $isChatSearchExpanded) {
@@ -35,13 +39,26 @@ struct HomeView: View {
             NavigationStack(path: $navigationPath) {
                 ZStack(alignment: .bottom) {
                     List {
-                        HistorySection(meetings: meetings, onSelect: { meeting in
-                            guard navigationPath.isEmpty else { return }
-                            navigationPath.append(meeting)
-                        }, onDelete: { meeting in
-                            modelContext.delete(meeting)
-                            try? modelContext.save()
-                        })
+                        if callDetection.isOnCall && !coordinator.isRecording {
+                            callBanner
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        }
+
+                        if meetings.isEmpty {
+                            emptyState
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        } else {
+                            HistorySection(meetings: meetings, onSelect: { meeting in
+                                guard navigationPath.isEmpty else { return }
+                                navigationPath.append(meeting)
+                            }, onDelete: { meeting in
+                                modelContext.delete(meeting)
+                                try? modelContext.save()
+                            })
+                        }
                     }
                     .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
@@ -57,17 +74,13 @@ struct HomeView: View {
                         onSend: { navigateToChat(prompt: askText) },
                         onPromptSelect: { navigateToChat(prompt: $0.prompt, recipeLabel: $0.label, recipeTint: $0.tint) }
                     ) {
-                        Button { createQuickNote() } label: {
-                            Image(systemName: "square.and.pencil")
+                        // Record button — primary action
+                        Button { startNewRecording() } label: {
+                            Image(systemName: "waveform")
                                 .font(.system(size: 20, weight: .medium))
-                                .foregroundStyle(Color.white)
-                                .frame(width: 44, height: 44)
-                                .background(Circle().fill(AppTheme.accent))
-                                .overlay(
-                                    Circle()
-                                        .stroke(AppTheme.surfaceStroke, lineWidth: 1)
-                                        .blendMode(.overlay)
-                                )
+                                .foregroundStyle(Color.black)
+                                .frame(width: 42, height: 42)
+                                .background(Circle().fill(AppTheme.ctaFill))
                         }
                     }
                 }
@@ -83,7 +96,10 @@ struct HomeView: View {
                             Image(systemName: "line.3.horizontal")
                         }
                     }
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        Button { createQuickNote() } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
                         Button {
                             navigationPath.append(SettingsRoute())
                         } label: {
@@ -99,7 +115,7 @@ struct HomeView: View {
                 }
                 .sheet(isPresented: $showNewNoteSheet, onDismiss: handleSheetDismiss) {
                     if let meeting = sheetMeeting {
-                        NewNoteSheet(meeting: meeting)
+                        NewNoteSheet(meeting: meeting, autoStartRecording: sheetAutoStart)
                     }
                 }
             }
@@ -119,12 +135,71 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Call Banner
+
+    private var callBanner: some View {
+        Button { startNewRecording() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 14))
+                Text(L("call.recordPrompt"))
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Image(systemName: "record.circle")
+                    .font(.system(size: 16))
+            }
+            .foregroundStyle(.white)
+            .padding(12)
+            .background(AppTheme.primary.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 60)
+
+            Image(systemName: "waveform")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(AppTheme.textTertiary)
+
+            Text(L("empty.recordFirst"))
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.primary)
+
+            Text(L("empty.recordDescription"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Spacer(minLength: 60)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Actions
+
+    private func startNewRecording() {
+        Haptic.impact(.medium)
+        let meeting = Meeting(title: "")
+        modelContext.insert(meeting)
+        try? modelContext.save()
+        sheetMeeting = meeting
+        sheetAutoStart = true
+        showNewNoteSheet = true
+    }
+
     private func createQuickNote() {
         Haptic.impact(.light)
         let meeting = Meeting(title: "")
         modelContext.insert(meeting)
         try? modelContext.save()
         sheetMeeting = meeting
+        sheetAutoStart = false
         showNewNoteSheet = true
     }
 
@@ -160,6 +235,6 @@ struct HomeView: View {
         }
 
         sheetMeeting = nil
+        sheetAutoStart = false
     }
 }
-
