@@ -20,6 +20,9 @@ struct MintoApp: App {
         }
     }()
 
+    // Keep a reference so CXCallObserver stays alive
+    private let callDetection = CallDetectionService.shared
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -33,6 +36,7 @@ struct MintoApp: App {
                 coordinator.handleAppBackgrounded()
             case .active:
                 coordinator.handleAppForegrounded()
+                callDetection.checkForActiveCalls()
             default:
                 break
             }
