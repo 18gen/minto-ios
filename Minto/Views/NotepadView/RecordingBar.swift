@@ -3,6 +3,7 @@ import SwiftUI
 struct RecordingBar: View {
     let meeting: Meeting
     @Binding var isEditing: Bool
+    var autoStart: Bool = false
     var onEnd: () -> Void
 
     private let coordinator = iOSRecordingCoordinator.shared
@@ -32,7 +33,7 @@ struct RecordingBar: View {
             }
         }
         .task {
-            if AppSettings.shared.autoRecord, recordingPhase == .idle {
+            if (autoStart || AppSettings.shared.autoRecord), recordingPhase == .idle {
                 startRecording()
             }
         }
