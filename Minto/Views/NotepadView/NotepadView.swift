@@ -120,7 +120,14 @@ private extension NotepadView {
 
     @ToolbarContentBuilder
     var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            Button {
+                UIPasteboard.general.string = shareText
+                Haptic.notification(.success)
+            } label: {
+                Image(systemName: "doc.on.doc")
+            }
+
             ShareLink(item: shareText) {
                 Image(systemName: "square.and.arrow.up")
             }
@@ -133,9 +140,14 @@ private extension NotepadView {
 private extension NotepadView {
     var shareText: String {
         var parts: [String] = []
-        if !meeting.title.isEmpty { parts.append(meeting.title) }
-        if !meeting.userNotes.isEmpty { parts.append(meeting.userNotes) }
-        if !meeting.augmentedNotes.isEmpty { parts.append(meeting.augmentedNotes) }
+        let title = meeting.title.isEmpty ? L("placeholder.newNote") : meeting.title
+        let date = meeting.startDate.formatted(date: .abbreviated, time: .shortened)
+        parts.append("📝 \(title) (\(date))")
+        if !meeting.augmentedNotes.isEmpty {
+            parts.append(meeting.augmentedNotes)
+        } else if !meeting.userNotes.isEmpty {
+            parts.append(meeting.userNotes)
+        }
         return parts.joined(separator: "\n\n")
     }
 
